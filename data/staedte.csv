@@ -1,0 +1,105 @@
+stadt,name_osm,bundesland,einwohner_osm,einwohner_kreis_osm,status,wikidata,division_area_id,grenze_typ,flaeche_km2,land
+Berlin,Berlin,DE-BE,3769962,,Großstadt,Q64,5d231bd3-41ee-4aed-84b2-e3c609063672,region,892.4,DE
+Hamburg,Hamburg,DE-HH,1862565,,Großstadt,Q1055,a628681a-02ff-4902-8869-9c55a4e6feb8,region,752.2,DE
+München,München,DE-BY,1484226,1478280.0,Großstadt,Q1726,e1b8fbff-ab6b-4d52-acb9-6e06e133a161,county,310.7,DE
+Köln,Köln,DE-NW,1069200,1097519.0,Großstadt,Q365,e29c1665-0d31-45cd-8148-29832195d06d,county,404.9,DE
+Frankfurt am Main,Frankfurt am Main,DE-HE,701350,756021.0,Großstadt,Q1794,29856a3f-fec2-4f2a-ae9b-29dc7f4db8dc,county,248.1,DE
+Düsseldorf,Düsseldorf,DE-NW,653253,,Großstadt,Q1718,821962df-dd5d-4a88-a6df-6f4b75116464,county,217.4,DE
+Leipzig,Leipzig,DE-SN,628718,,Großstadt,Q2079,8d36ae6d-07ff-4ba3-aaaa-2b548c1650dc,county,298.0,DE
+Stuttgart,Stuttgart,DE-BW,613392,,Großstadt,Q1022,21b97078-d9cf-42a7-ae2d-bcd5c03f0f3c,county,207.2,DE
+Dortmund,Dortmund,DE-NW,600933,,Großstadt,Q1295,6f55e24d-b06c-4191-b854-d99812219165,county,280.6,DE
+Dresden,Dresden,DE-SN,572240,556780.0,Großstadt,Q1731,bb234361-6b69-4145-a075-aa0c083ef8f1,county,329.1,DE
+Essen,Essen,DE-NW,569884,569884.0,Großstadt,Q2066,6731ea17-c60f-40bb-a017-05a8e0bc39a8,county,210.3,DE
+Hannover,Hannover,DE-NI,555372,,Großstadt,Q1715,31651a7a-4581-4f34-8225-5bbe14e61128,locality,204.0,DE
+Bremen,Bremen,DE-HB,551415,551767.0,Großstadt,Q24879,6963b386-4bff-4b6d-a836-35a51ab8a697,county,326.0,DE
+Nürnberg,Nürnberg,DE-BY,526091,,Großstadt,Q2090,73319f42-db74-4ef7-b8c9-d37c1d7a1b2a,county,186.6,DE
+Duisburg,Duisburg,DE-NW,486855,,Großstadt,Q2100,4b993003-e61c-4bc1-820e-6c8b681b6a75,county,232.8,DE
+Bochum,Bochum,DE-NW,371075,371075.0,Großstadt,Q2103,9c67e46b-1f21-4b20-abb2-0ac59164606d,county,145.6,DE
+Wuppertal,Wuppertal,DE-NW,361077,,Großstadt,Q2107,fb893ede-1dc4-4a36-9af6-73cc3f2f4040,county,168.4,DE
+Bonn,Bonn,DE-NW,335913,,Großstadt,Q586,a06c0785-2d25-442a-a112-9b8b0a77becc,county,141.0,DE
+Bielefeld,Bielefeld,DE-NW,328864,328012.0,Großstadt,Q2112,1a4ccf39-45b9-4835-8ee2-2b8d54298bd2,county,258.6,DE
+Münster,Münster,DE-NW,314332,,Großstadt,Q2742,41d5bd20-0969-4743-af27-2ac5329f6b49,county,303.1,DE
+Mannheim,Mannheim,DE-BW,310000,,Großstadt,Q2119,98f092f4-2ce9-457d-8e75-5b125d440e44,county,144.9,DE
+Augsburg,Augsburg,DE-BY,301033,,Großstadt,Q2749,b539004a-8ba5-4959-8fe6-d0c25411a211,county,146.8,DE
+Wiesbaden,Wiesbaden,DE-HE,299946,,Großstadt,Q1721,4e74d07c-1277-4447-829e-33f0b39df6f8,county,203.8,DE
+Karlsruhe,Karlsruhe,DE-BW,283959,,Großstadt,Q1040,664e7681-f170-4c68-9301-8e1d1169921e,county,173.3,DE
+Gelsenkirchen,Gelsenkirchen,DE-NW,260368,270107.0,Großstadt,Q2765,fcca09d8-1c04-4dd8-88ac-42b76a60fd60,county,104.9,DE
+Mönchengladbach,Mönchengladbach,DE-NW,255430,,Großstadt,Q2758,e8f0be49-ddd5-43b1-8f98-4c9e17ac1370,county,170.5,DE
+Braunschweig,Braunschweig,DE-NI,252962,253527.0,Großstadt,Q2773,930b05fa-ce57-4d86-a181-da5bfd8e977d,county,192.6,DE
+Kiel,Kiel,DE-SH,246306,,Großstadt,Q1707,914a6fe9-52cc-4039-a199-044dd4eb5330,county,118.6,DE
+Magdeburg,Magdeburg,DE-ST,244329,,Großstadt,Q1733,41bfbc4a-00e4-49fa-b811-58eebedfd179,county,201.7,DE
+Chemnitz,Chemnitz,DE-SN,243089,,Großstadt,Q2795,d8d269a7-d0c9-4b45-8eff-108290b1da2c,county,221.2,DE
+Aachen,Aachen,DE-NW,241683,,Großstadt,Q1017,e3cc951e-ccd8-4cf6-af49-f625afcaaf5f,locality,160.9,DE
+Halle (Saale),Halle (Saale),DE-ST,231565,,Großstadt,Q2814,5ee8b574-10d5-47b7-bbe1-e431f45dd989,county,135.5,DE
+Mainz,Mainz,DE-RP,227277,,Großstadt,Q1720,3dfb17be-7a1a-48af-ab95-aaaf0fb11124,county,97.7,DE
+Krefeld,Krefeld,DE-NW,222058,,Großstadt,Q2805,ab929f80-9e48-4a7e-9dd7-f19c3cc048b9,county,137.8,DE
+Freiburg im Breisgau,Freiburg im Breisgau,DE-BW,220286,230219.0,Großstadt,Q2833,b9986c31-49ad-4aed-b478-5528ff0eb331,county,152.9,DE
+Erfurt,Erfurt,DE-TH,213332,215000.0,Großstadt,Q1729,d6b531b9-1a21-4fcc-96f7-6712714c41eb,county,269.6,DE
+Lübeck,Lübeck,DE-SH,212958,212958.0,Großstadt,Q2843,7067f218-c2b3-4f0b-8a95-6ee28490e46f,county,214.3,DE
+Oberhausen,Oberhausen,DE-NW,209292,,Großstadt,Q2838,66552b63-4e86-4af1-adfe-a80ad2083da1,county,77.1,DE
+Rostock,Rostock,DE-MV,207830,,Großstadt,Q2861,441ed495-bdd6-4b5b-b30b-ff4b5df12b93,county,181.6,DE
+Kassel,Kassel,DE-HE,204021,,Großstadt,Q2865,a53ff833-0538-4892-9794-c554de658456,county,106.7,DE
+Hagen,Hagen,DE-NW,186000,,Großstadt,Q2871,0f21fe17-cbd4-494d-923b-0b55aca68c69,county,160.4,DE
+Potsdam,Potsdam,DE-BB,178089,,Großstadt,Q1711,c85906be-c08b-4b1e-af9b-79130fd1019e,county,188.4,DE
+Saarbrücken,Saarbrücken,DE-SL,177201,,Großstadt,Q1724,b192d567-ff75-43d6-87dd-ccbdbb40851e,locality,167.4,DE
+Hamm,Hamm,DE-NW,176048,,Großstadt,Q2880,cb93fa8b-a343-4ca5-8895-49368e867c02,county,226.3,DE
+Osnabrück,Osnabrück,DE-NI,167730,169108.0,Großstadt,Q2916,c600bf66-6231-4228-b5b2-f184bf3525ec,county,119.7,DE
+Mülheim an der Ruhr,Mülheim an der Ruhr,DE-NW,167108,,Großstadt,Q2899,fc7b5e3d-db80-4d86-b4a4-6be9de742323,county,91.3,DE
+Solingen,Solingen,DE-NW,164205,,Großstadt,Q2942,853c01ba-d5f8-44f0-ba34-494fb11d0e46,county,89.5,DE
+Oldenburg,Oldenburg,DE-NI,163830,,Großstadt,Q2936,ddf6c9db-3e5e-450d-a92c-e6ce9098fe59,county,103.0,DE
+Ludwigshafen am Rhein,Ludwigshafen am Rhein,DE-RP,163340,,Großstadt,Q2910,fdb0fa60-1092-45cf-a84a-9a302dbd384a,county,77.5,DE
+Leverkusen,Leverkusen,DE-NW,160819,,Großstadt,Q2938,7eef8dc5-9be1-450c-a9a0-fa3deed8b007,county,78.8,DE
+Darmstadt,Darmstadt,DE-HE,159631,169255.0,Großstadt,Q2973,3f5e3bba-9f45-430f-b8a8-2755adebf033,county,122.0,DE
+Neuss,Neuss,DE-NW,159122,,Großstadt,Q2948,45a6dd2a-5122-4ccb-9dd1-ee7a5c0e5432,locality,99.5,DE
+Herne,Herne,DE-NW,156449,,Großstadt,Q2904,435087c0-e34f-45ed-a920-547dd952948c,county,51.4,DE
+Heidelberg,Heidelberg,DE-BW,152113,155756.0,Großstadt,Q2966,a8ea1174-655f-4bc3-b860-6b04982b2281,county,108.7,DE
+Paderborn,Paderborn,DE-NW,151633,,Großstadt,Q2971,2c7698c8-acb6-492e-9eed-e0a3512e0871,locality,179.5,DE
+Regensburg,Regensburg,DE-BY,145000,,Großstadt,Q2978,7970ac1d-05ab-4353-b79a-ea077b6830bd,county,80.7,DE
+Offenbach am Main,Offenbach am Main,DE-HE,136824,,Großstadt,Q3042,13af9075-2fae-41eb-9d96-052fe4942360,county,44.8,DE
+Göttingen,Göttingen,DE-NI,135887,,Großstadt,Q3033,c8c4fb1b-207f-4180-8d8c-66ecc1947177,locality,116.9,DE
+Fürth,Fürth,DE-BY,135082,,Großstadt,Q117336700,b4b2dbb3-321d-4725-8645-c9df2dddaa49,county,63.3,DE
+Heilbronn,Heilbronn,DE-BW,131653,,Großstadt,Q715,a280c56a-2d1b-4832-bc85-19c8e4f9edd2,county,99.8,DE
+Ingolstadt,Ingolstadt,DE-BY,127886,,Großstadt,Q3004,e424f265-d2df-42f5-941d-b4b4bac54bd6,county,133.4,DE
+Würzburg,Würzburg,DE-BY,124700,,Großstadt,Q118464900,974a19b1-1b04-42d1-9fee-9906e6a38e98,county,87.6,DE
+Wolfsburg,Wolfsburg,DE-NI,122457,,Großstadt,Q3014,d835405b-9dfc-458a-bf84-8ec4ec7dca0d,county,204.5,DE
+Ulm,Ulm,DE-BW,121648,,Großstadt,Q3012,e0148933-2d47-497a-b3bb-2f938623929b,county,118.6,DE
+Erlangen,Erlangen,DE-BY,120028,,Großstadt,Q117751880,3c47f869-d273-4327-8aad-e2daafe1295a,county,77.0,DE
+Pforzheim,Pforzheim,DE-BW,117754,,Großstadt,Q3046,42e83a37-ebe0-4d9c-91ea-76cda8506a14,county,97.9,DE
+Bremerhaven,Bremerhaven,DE-HB,117281,,Großstadt,Q2706,8ffc9f76-0a6f-455d-b71d-f2f870b3bfeb,county,85.9,DE
+Remscheid,Remscheid,DE-NW,116827,,Großstadt,Q3097,bb3b1548-9b72-4116-b4f7-06a601fb6a1a,county,74.5,DE
+Bottrop,Bottrop,DE-NW,116055,,Großstadt,Q3069,772943e0-6763-4781-aebb-613dbe031a88,county,100.6,DE
+Recklinghausen,Recklinghausen,DE-NW,115320,,Großstadt,Q3050,5e3da74e-660b-4df2-9216-e75c6d9696d8,locality,66.5,DE
+Reutlingen,Reutlingen,DE-BW,112099,,Großstadt,Q3085,acdb91db-509a-464a-be5a-7dacd5092ba1,locality,87.0,DE
+Jena,Jena,DE-TH,111343,,Großstadt,Q3150,8d8ab36a-e2be-4424-b0c2-9533cd2838db,county,114.4,DE
+Koblenz,Koblenz,DE-RP,110643,,Großstadt,Q3104,c01c624c-486a-412d-a060-4af8871ff611,county,106.0,DE
+Bergisch Gladbach,Bergisch Gladbach,DE-NW,109425,,Großstadt,Q3117,b438f97b-57c7-46e4-9080-9cd5b30d1e39,locality,83.1,DE
+Trier,Trier,DE-RP,107233,,Großstadt,Q3138,e8f16884-0f3c-4853-aa86-c74f29cf05fb,county,117.0,DE
+Moers,Moers,DE-NW,105102,,Großstadt,Q3132,de7b8177-510b-4713-b6be-81dcd59546bd,locality,67.6,DE
+Salzgitter,Salzgitter,DE-NI,103694,,Großstadt,Q3200,72127dea-81b9-48b7-83fd-ec24cd765413,county,224.3,DE
+Gütersloh,Gütersloh,DE-NW,103603,,Großstadt,Q3771,70acf768-0eb0-4624-a0f8-ec5e79d078b2,locality,111.9,DE
+Hanau,Hanau,DE-HE,101364,101364.0,Großstadt,Q3802,cd097b20-9646-4210-8e5b-1ba1dca9fa3e,county,76.2,DE
+Siegen,Siegen,DE-NW,99403,,Grenzfall,Q3167,2a5ba540-cbb5-4cdf-8779-dedc48cface3,locality,114.6,DE
+Flensburg,Flensburg,DE-SH,99307,,Grenzfall,Q3798,b2b40af5-c5b8-450b-a01f-1fddc3a83cc1,county,56.7,DE
+Cottbus,Cottbus - Chóśebuz,DE-BB,98693,101036.0,Grenzfall,Q3214,8e3e58a9-92cb-4f4f-8f88-b8ab6dcfddf9,county,166.1,DE
+Schwerin,Schwerin,DE-MV,98596,,Grenzfall,Q1709,9259953f-15f6-4beb-a26a-59ed2b2f64bf,county,130.5,DE
+Hildesheim,Hildesheim,DE-NI,98510,,Grenzfall,Q3185,4142ff1c-7a7c-49a7-b803-ee566926a8ce,locality,92.1,DE
+Kaiserslautern,Kaiserslautern,DE-RP,97162,,Grenzfall,Q3758,1b26abc6-5f80-4dfc-9e21-efdeb9065278,county,139.6,DE
+Wien,Wien,AT-9,2042036,,Landeshauptstadt AT,Q1741,4f0b811b-6fc3-4ef1-8896-6e2eeac2202f,region,417.6,AT
+Graz,Graz,AT-6,331359,,Landeshauptstadt AT,Q13298,c34d3cab-0b2d-4f74-9dc1-ed8ce4c14ec5,county,128.2,AT
+Linz,Linz,AT-4,207812,,Landeshauptstadt AT,Q41329,b010a323-f592-4d74-839f-36a77e43106c,county,96.3,AT
+Salzburg,Salzburg,AT-5,152083,,Landeshauptstadt AT,Q34713,ae73a0ec-e98b-4242-bfbc-a1e483954fa5,county,65.8,AT
+Innsbruck,Innsbruck,AT-7,130585,,Landeshauptstadt AT,Q1735,3a6b05fd-b061-4ce5-b22b-d8a768992fd4,county,104.9,AT
+Klagenfurt,Klagenfurt,AT-2,100316,,Landeshauptstadt AT,Q41753,a3a9d7f7-c199-44ff-8269-cd95f4b743a0,county,120.5,AT
+St. Pölten,St. Pölten,AT-3,59767,,Landeshauptstadt AT,Q82500,fa3ebceb-e1c2-4f80-9767-2fec3a3679ad,county,109.1,AT
+Bregenz,Bregenz,AT-8,29620,,Landeshauptstadt AT,Q1737,4f7a05be-3078-43f8-b672-635d6ac52b51,locality,29.7,AT
+Eisenstadt,Eisenstadt,AT-1,9243,,Landeshauptstadt AT,Q126321,9458dec4-9125-4ee8-b977-49a508fef6e5,county,43.2,AT
+Zürich,Zürich,CH-ZH,443037,,Großstadt CH (Top 10),Q72,ca71a8ff-b812-4054-b837-0570c16b8b51,localadmin,91.8,CH
+Genf,Genève,CH-GE,191557,,Großstadt CH (Top 10),Q71,6cab781b-4f18-47b1-b38d-8f30d9ae331e,localadmin,18.3,CH
+Basel,Basel,CH-BS,174491,,Großstadt CH (Top 10),Q78,9d8fc035-184f-473f-8e25-ec979c69f7b3,localadmin,23.8,CH
+Lausanne,Lausanne,CH-VD,133521,,Großstadt CH (Top 10),Q807,4f856cc5-2078-42b2-b84d-08f4ccca9672,localadmin,67.6,CH
+Bern,Bern,CH-BE,128848,,Großstadt CH (Top 10),Q70,81172041-2d6c-4816-9e20-d28b1039e64c,localadmin,51.6,CH
+Winterthur,Winterthur,CH-ZH,108044,,Großstadt CH (Top 10),Q9125,8ea7442d-7dbb-417b-b7b4-9abd6266d952,localadmin,68.0,CH
+Luzern,Luzern,CH-LU,86234,,Großstadt CH (Top 10),Q4191,1f79054b-f776-4036-b9f9-d57f3d7736b3,localadmin,37.4,CH
+St. Gallen,St. Gallen,CH-SG,78213,,Großstadt CH (Top 10),Q25607,01c4b12b-3253-47c3-b641-5020249cb003,localadmin,39.3,CH
+Lugano,Lugano,CH-TI,67000,,Großstadt CH (Top 10),Q7024,79e6ffad-25ac-421e-8dc7-ec031ccb2e24,localadmin,86.1,CH
+Biel/Bienne,Biel/Bienne,CH-BE,56378,,Großstadt CH (Top 10),Q1034,f552a007-b471-4a28-91db-c896050fd07c,localadmin,21.2,CH
