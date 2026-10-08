@@ -123,9 +123,9 @@ def fetch_named_divisions(country: str, names: list[str], tag: str) -> tuple[gpd
     cache_area = config.CACHE / f"division_areas_{tag}.parquet"
     subtypes = ["locality", "localadmin", "county", "region"]
 
-    def load(typ, cols, path):
+    def load(typ, cols, path, extra):
         if not path.exists():
-            flt = (pc.field("country") == country) & pc.field("subtype").isin(subtypes)
+            flt = (pc.field("country") == country) & pc.field("subtype").isin(subtypes) & extra
             tb = _retry(lambda: dataset("divisions", typ).to_table(filter=flt, columns=cols))
             tb = tb.append_column("name", pc.struct_field(tb["names"], "primary")).drop(["names"])
             pq.write_table(tb, path)
@@ -134,6 +134,10 @@ def fetch_named_divisions(country: str, names: list[str], tag: str) -> tuple[gpd
                                 geometry=gpd.GeoSeries.from_wkb(tb["geometry"].to_numpy(zero_copy_only=False)),
                                 crs=4326)
 
-    div = load("division", ["id", "names", "subtype", "class", "population", "wikidata", "region", "geometry"], cache_div)
-    areas = load("division_area", ["id", "division_id", "subtype", "class", "names", "geometry"], cache_area)
-    return div[div["name"].isin(names)], areas
+    div = load("division", ["id", "names", "subtype", "class", "population", "wikidata", "region", "geometry"], cache_div,
+               pc.field("names", "primary").isin(names))
+    div = div[div["name"].isin(names)]
+    # nur die Grenzflächen der gefundenen Divisions (ganz DE wäre mehrere GB)
+    areas = load("division_area", ["id", "division_id", "subtype", "class", "names", "geometry"], cache_area,
+                 pc.field("division_id").isin(sorted(div["id"])))
+    return div, areas

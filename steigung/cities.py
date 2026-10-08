@@ -1,4 +1,4 @@
-"""Deutsche Großstädte (>100k EW) + Vergleichsstädte aus Österreich und der Schweiz, inkl. Verwaltungsgrenze."""
+"""Deutsche Großstädte (>100k EW) + Vergleichsstädte (AT, CH, LU) + Wunschstädte, inkl. Verwaltungsgrenze."""
 from __future__ import annotations
 
 import logging
@@ -38,19 +38,38 @@ FOREIGN = {
         # Gemeinde = localadmin; county ist in der Schweiz der Bezirk
         prio={"localadmin": 0, "locality": 1, "county": 2, "region": 3},
     ),
+    "LU": dict(
+        status="Hauptstadt LU",
+        cities={"Luxemburg": "Q1842"},
+        names=["Luxembourg"],
+        # Gemeinde Luxemburg ist in Overture ein county mit derselben Wikidata-ID (der Kanton hat eine andere)
+        prio={"county": 0, "localadmin": 1, "locality": 2, "region": 3},
+    ),
+}
+
+# Von Lesern gewünschte deutsche Städte unter 100.000 EW: im Gesamtranking, aber ohne deutschen Rang
+WISH = {
+    "DE": dict(
+        status="Wunschstadt",
+        cities={"Tübingen": "Q3806", "Pirmasens": "Q14849"},
+        names=["Tübingen", "Pirmasens"],
+        # Pirmasens ist kreisfrei (county), Tübingen kreisangehörig (locality)
+        prio={"county": 0, "locality": 1, "localadmin": 2, "region": 3},
+    ),
 }
 
 
 def build_city_table() -> gpd.GeoDataFrame:
     de = build_de_table()
     de["land"] = "DE"
-    parts = [de] + [build_foreign_table(cc) for cc in FOREIGN]
+    parts = [de] + [build_foreign_table(cc) for cc in FOREIGN] \
+        + [build_foreign_table(cc, WISH[cc], f"{cc.lower()}_wunsch") for cc in WISH]
     return pd.concat(parts, ignore_index=True).pipe(gpd.GeoDataFrame, crs=4326)
 
 
-def build_foreign_table(cc: str) -> gpd.GeoDataFrame:
-    spec = FOREIGN[cc]
-    div, areas = fetch_named_divisions(cc, spec["names"], cc.lower())
+def build_foreign_table(cc: str, spec: dict | None = None, tag: str | None = None) -> gpd.GeoDataFrame:
+    spec = spec or FOREIGN[cc]
+    div, areas = fetch_named_divisions(cc, spec["names"], tag or cc.lower())
     areas = areas[areas["class"] == "land"].copy()
     areas["km2"] = areas.to_crs(config.METRIC_CRS).area / 1e6
     rows = []

@@ -155,7 +155,7 @@ footer{font-family:var(--font-mono);font-size:var(--step--1);color:var(--muted);
     <div>
       <div class="eyebrow">Steigungsatlas · Straßennetz „drive“ · längengewichtet</div>
       <h1>Höhenmeter <span class="slash">//</span> pro Straßenkilometer</h1>
-      <p id="lede">Welche deutsche Großstadt hat das steilste Straßennetz? Die drei steilsten Städte im Gelände, daneben die flachste als Maßstab. Zum Vergleich: die österreichischen Landeshauptstädte und die zehn größten Schweizer Städte.</p>
+      <p id="lede">Welche deutsche Großstadt hat das steilste Straßennetz? Die drei steilsten Städte im Gelände, daneben die flachste als Maßstab. Zum Vergleich: die österreichischen Landeshauptstädte, die zehn größten Schweizer Städte und Luxemburg, dazu Tübingen und Pirmasens auf Leserwunsch.</p>
     </div>
     <div class="stamp" id="stamp"></div>
   </header>
@@ -252,7 +252,7 @@ const GAP = 1500; /* Abstand zwischen den Städten im Vergleich, in Metern */
 /* ---------- Kopf ---------- */
 document.getElementById("stamp").innerHTML =
   `Stand <b>${DATA.meta.stand}</b><br>Overture <b>${DATA.meta.overture_release}</b> · OSM<br>` +
-  `DEM <b>Copernicus GLO-30</b> / SRTM<br><b>${DATA.meta.anzahl_staedte}</b> DE · <b>${DATA.meta.anzahl_staedte_at || 0}</b> AT · <b>${DATA.meta.anzahl_staedte_ch || 0}</b> CH`;
+  `DEM <b>Copernicus GLO-30</b> / SRTM<br><b>${DATA.meta.anzahl_staedte}</b> DE · <b>${DATA.meta.anzahl_staedte_at || 0}</b> AT · <b>${DATA.meta.anzahl_staedte_ch || 0}</b> CH · <b>${DATA.meta.anzahl_staedte_lu || 0}</b> LU · <b>${DATA.meta.anzahl_wunschstaedte || 0}</b> Wunsch`;
 
 const tabs = d3.select("#tabs").selectAll("button").data(cities).join("button")
   .attr("class", (d, i) => "tab" + (roles[i] === "ref" ? " ref" : isForeign(i) ? " at" : ""))
@@ -727,13 +727,14 @@ function drawRank() {
     return g;
   });
   rows.transition().duration(dur).ease(d3.easeCubicInOut).attr("transform", d => `translate(0,${RW.m.t + pos.get(d.stadt) * RW.row})`);
-  rows.select("title").text(d => `${d.stadt}${d.status === "Grenzfall" ? " (Grenzfall < 100.000 EW laut OSM)" : ""}\nHm/km ${de(fmt1(d.hm_pro_km))} · >6 % ${de(fmt1(d.anteil_ueber_6pct))} % · P90 ${de(fmt1(d.p90_steigung_pct))} % · SRTM ${de(fmt1(d.drive_srtm_hm_pro_km))} Hm/km · ${fmt0(d.strassen_km)} km`);
+  rows.select("title").text(d => `${d.stadt}${d.status === "Grenzfall" ? " (Grenzfall < 100.000 EW laut OSM)" : d.status === "Wunschstadt" ? " (Wunschstadt < 100.000 EW, außer Konkurrenz)" : ""}\nHm/km ${de(fmt1(d.hm_pro_km))} · >6 % ${de(fmt1(d.anteil_ueber_6pct))} % · P90 ${de(fmt1(d.p90_steigung_pct))} % · SRTM ${de(fmt1(d.drive_srtm_hm_pro_km))} Hm/km · ${fmt0(d.strassen_km)} km`);
   rows.select(".rk").text(d => String(pos.get(d.stadt) + 1).padStart(2, "0"));
-  rows.select(".lbl").text(d => d.stadt + (d.status === "Grenzfall" ? " °" : "") + (d.land !== "DE" ? " · " + d.land : "")).classed("dim", d => !featured.has(d.stadt) && d.land === "DE")
+  rows.select(".lbl").text(d => d.stadt + (d.status === "Grenzfall" ? " °" : d.status === "Wunschstadt" ? " *" : "") + (d.land !== "DE" ? " · " + d.land : "")).classed("dim", d => !featured.has(d.stadt) && d.land === "DE" && d.status !== "Wunschstadt")
     .style("fill", d => hlColor(d.stadt));
   rows.select("rect").transition().duration(dur).attr("width", d => Math.max(1, x(d[metric]) - RW.m.l))
     .attr("fill", d => hlColor(d.stadt) || (d.land !== "DE" ? "color-mix(in srgb, #f4f7ff 30%, transparent)" : "color-mix(in srgb, var(--muted) 45%, transparent)"))
-    .attr("stroke", d => d.land !== "DE" ? "#c8102e" : "none").attr("stroke-width", 1)
+    .attr("stroke", d => d.land !== "DE" ? "#c8102e" : d.status === "Wunschstadt" ? "#f4f7ff" : "none").attr("stroke-width", 1)
+    .attr("stroke-dasharray", d => d.status === "Wunschstadt" ? "3 2" : null)
     .attr("fill-opacity", d => d.status === "Grenzfall" ? 0.45 : 1);
   rows.select("text.val").transition().duration(dur).attr("x", d => x(d[metric]) + 6).text(d => de(sort.f(d[metric])) + (sort.u || ""));
   /* Linie: flachste Großstadt = Grundrauschen des DSM */
@@ -742,11 +743,11 @@ function drawRank() {
   rnoise.selectAll("*").remove();
   rnoise.append("line").attr("x1", nx).attr("x2", nx).attr("y1", 0).attr("y2", R.length * RW.row + RW.m.t).attr("stroke", SCOL[1]).attr("stroke-dasharray", "2 4").attr("opacity", 0.6);
   document.getElementById("ranknote").innerHTML =
-    `Gestrichelte Linie: Wert der flachsten Großstadt (${flat.stadt}). Bis hierhin besteht ein großer Teil des Signals aus DEM-Rauschen (Gebäude, Bäume im Oberflächenmodell), nicht aus Topografie. ° = Grenzfall knapp unter 100.000 EW laut OSM. AT/CH = Vergleichsstädte aus Österreich und der Schweiz (ohne deutschen Rang); Rangzahl links = Gesamtrang.`;
+    `Gestrichelte Linie: Wert der flachsten Großstadt (${flat.stadt}). Bis hierhin besteht ein großer Teil des Signals aus DEM-Rauschen (Gebäude, Bäume im Oberflächenmodell), nicht aus Topografie. ° = Grenzfall knapp unter 100.000 EW laut OSM. AT/CH/LU = Vergleichsstädte aus Österreich, der Schweiz und Luxemburg; * = Wunschstadt unter 100.000 EW (Tübingen, Pirmasens). Beide ohne deutschen Rang; Rangzahl links = Gesamtrang.`;
 }
 
 /* ---------- Methodik / Validierung ---------- */
-const MLAB = { strassendaten: "Straßendaten", stadtgrenzen: "Stadtgrenzen", staedteliste: "Städteliste", hoehenmodell: "Höhenmodell", netz: "Netz", bruecken_tunnel: "Brücken & Tunnel", kurze_kanten: "Kurze Kanten", steigung: "Steigung", ausreisser: "Ausreißer", hm_pro_km: "Höhenmeter/km", oesterreich: "Österreich", schweiz: "Schweiz", steilste_strecke: "Steilste Strecke" };
+const MLAB = { strassendaten: "Straßendaten", stadtgrenzen: "Stadtgrenzen", staedteliste: "Städteliste", hoehenmodell: "Höhenmodell", netz: "Netz", bruecken_tunnel: "Brücken & Tunnel", kurze_kanten: "Kurze Kanten", steigung: "Steigung", ausreisser: "Ausreißer", hm_pro_km: "Höhenmeter/km", oesterreich: "Österreich", schweiz: "Schweiz", luxemburg: "Luxemburg", wunschstaedte: "Wunschstädte", steilste_strecke: "Steilste Strecke" };
 document.getElementById("method").innerHTML = Object.entries(DATA.meta.methodik).map(([k, v]) => `<div><dt>${MLAB[k] || k}</dt><dd>${v}</dd></div>`).join("");
 document.getElementById("limits").innerHTML = DATA.meta.bekannte_grenzen.map(s => `<li>${s}</li>`).join("") +
   `<li>Ranking-Vergleich: Spearman ρ (Hm/km vs. Anteil > 6 %) = ${de(fmt2(DATA.meta.ranking_vergleich.spearman_hm_vs_anteil6))}; Copernicus vs. SRTM (Hm/km) = ${de(fmt2(DATA.meta.dem_vergleich.spearman_hm_pro_km_cop30_vs_srtm))}.</li>`;

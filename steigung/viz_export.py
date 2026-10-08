@@ -164,6 +164,7 @@ def build_html():
                                                                    "bekannte_grenzen", "ranking_vergleich",
                                                                    "dem_vergleich", "anzahl_staedte",
                                                                    "anzahl_staedte_at", "anzahl_staedte_ch",
+                                                                   "anzahl_staedte_lu", "anzahl_wunschstaedte",
                                                                    "anzahl_staedte_gesamt")},
         "validation": val,
     }

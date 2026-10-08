@@ -51,6 +51,9 @@ METHODIK = {
     "schweiz": "Zum Vergleich die zehn größten Schweizer Städte (nur sechs davon > 100.000 EW): Zürich, Genf, Basel, "
                "Lausanne, Bern, Winterthur, Luzern, St. Gallen, Lugano, Biel/Bienne. Grenze = politische Gemeinde "
                "(OSM localadmin). Gleiche Methode, nur Gesamtrang.",
+    "luxemburg": "Luxemburg-Stadt auf Leserwunsch, Grenze = Gemeinde. Gleiche Methode, nur Gesamtrang.",
+    "wunschstaedte": "Tübingen und Pirmasens auf Leserwunsch. Beide liegen unter 100.000 EW, laufen daher außer "
+                     "Konkurrenz: Gesamtrang, aber kein Rang im deutschen Großstadt-Ranking.",
     "steilste_strecke": "Zusammenhängende Kantenfolge gleichen Straßennamens, 100–800 m, maximale Netto-Steigung. "
                         "Konservativ: Minimum aus Copernicus und SRTM, Richtung muss übereinstimmen.",
 }
@@ -88,7 +91,8 @@ def write_results(cities: pd.DataFrame, store: dict, failed: dict):
     df = pd.DataFrame(rows).set_index("stadt")
     df = meta[["land", "status", "bundesland", "einwohner_osm", "flaeche_km2"]].join(df, how="inner").reset_index()
     # Ränge der deutschen Städte untereinander (wie ursprünglich), AT-Städte ohne DE-Rang
-    is_de = df["land"] == "DE"
+    # Wunschstädte (< 100.000 EW) laufen außer Konkurrenz, wie die Vergleichsländer nur mit Gesamtrang
+    is_de = (df["land"] == "DE") & (df["status"] != "Wunschstadt")
     for col, src in (("rang_hm_pro_km", "hm_pro_km"), ("rang_anteil_6pct", "anteil_ueber_6pct"),
                      ("rang_hm_pro_km_srtm", "drive_srtm_hm_pro_km")):
         df[col] = pd.Series(pd.NA, index=df.index, dtype="Int64")
@@ -101,7 +105,7 @@ def write_results(cities: pd.DataFrame, store: dict, failed: dict):
         df[c] = df["hist_km"].apply(lambda h: h[i])
         hist_cols.append(c)
     df = df.sort_values("hm_pro_km", ascending=False)
-    is_de = df["land"] == "DE"
+    is_de = (df["land"] == "DE") & (df["status"] != "Wunschstadt")
     other = [c for c in df.columns if c not in MAIN_COLS + hist_cols + ["hist_km", "hist_km_srtm"]]
     out = df[[c for c in MAIN_COLS if c in df.columns] + hist_cols + other]
     out.to_csv(config.RESULTS / "staedte_kennzahlen.csv", index=False, float_format="%.3f")
@@ -139,6 +143,8 @@ def write_results(cities: pd.DataFrame, store: dict, failed: dict):
         "ranking_anteil_6pct": de.sort_values("rang_anteil_6pct")["stadt"].tolist(),
         "oesterreich": [brief(r) for _, r in df[df.land == "AT"].sort_values("hm_pro_km", ascending=False).iterrows()],
         "schweiz": [brief(r) for _, r in df[df.land == "CH"].sort_values("hm_pro_km", ascending=False).iterrows()],
+        "luxemburg": [brief(r) for _, r in df[df.land == "LU"].iterrows()],
+        "wunschstaedte": [brief(r) for _, r in df[df.status == "Wunschstadt"].iterrows()],
         "ranking_gesamt_hm_pro_km": df.sort_values("hm_pro_km", ascending=False)["stadt"].tolist(),
         "ranking_vergleich": {
             "spearman_hm_vs_anteil6": round(rho_rank, 3),
@@ -149,6 +155,8 @@ def write_results(cities: pd.DataFrame, store: dict, failed: dict):
         "anzahl_staedte": int(is_de.sum()),
         "anzahl_staedte_at": int((df.land == "AT").sum()),
         "anzahl_staedte_ch": int((df.land == "CH").sum()),
+        "anzahl_staedte_lu": int((df.land == "LU").sum()),
+        "anzahl_wunschstaedte": int((df.status == "Wunschstadt").sum()),
         "anzahl_staedte_gesamt": int(len(df)),
     }
     (config.RESULTS / "top_staedte.json").write_text(json.dumps(res, ensure_ascii=False, indent=2, default=str))
