@@ -334,7 +334,7 @@ function buildCity(c, slug) {
   tg.setAttribute("position", new THREE.BufferAttribute(tp, 3));
   tg.setAttribute("color", new THREE.BufferAttribute(tc, 3));
   tg.setIndex(idxs); tg.computeVertexNormals();
-  const tmat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x16301f, transparent: true, opacity: 1, side: THREE.DoubleSide });
+  const tmat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x14263c, transparent: true, opacity: 1, side: THREE.DoubleSide });
   const terrain = new THREE.Mesh(tg, tmat);
   g.add(terrain);
   const wire = new THREE.LineSegments(new THREE.WireframeGeometry(tg), new THREE.LineBasicMaterial({ color: 0x1a3a5a, transparent: true, opacity: 0.18 }));
