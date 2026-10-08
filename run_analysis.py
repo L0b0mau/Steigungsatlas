@@ -99,7 +99,7 @@ def main():
         from steigung.validate import run_validation
         from steigung.viz_export import build_html
         run_validation()
-        build_html()
+        build_html(only=set(sel.stadt) if (args.cities or args.test) else None, workers=args.workers)
     if failed:
         log.warning("Fehlgeschlagene Städte: %s", ", ".join(failed))
 

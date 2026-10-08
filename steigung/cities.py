@@ -47,13 +47,15 @@ FOREIGN = {
     ),
 }
 
-# Von Lesern gewünschte deutsche Städte unter 100.000 EW: im Gesamtranking, aber ohne deutschen Rang
+# Reddit-Wishlist: von Lesern gewünschte Orte unter 100.000 EW: im Gesamtranking, aber ohne deutschen Rang
 WISH = {
     "DE": dict(
         status="Wunschstadt",
-        cities={"Tübingen": "Q3806", "Pirmasens": "Q14849"},
-        names=["Tübingen", "Pirmasens"],
-        # Pirmasens ist kreisfrei (county), Tübingen kreisangehörig (locality)
+        cities={"Tübingen": "Q3806", "Pirmasens": "Q14849", "Marburg": "Q3869",
+                "Niedernhausen": "Q427360", "Engenhahn": "Q1342227"},
+        names=["Tübingen", "Pirmasens", "Marburg", "Niedernhausen", "Engenhahn"],
+        # Pirmasens ist kreisfrei (county), die übrigen kreisangehörig (locality/localadmin);
+        # Engenhahn ist ein Ortsteil von Niedernhausen
         prio={"county": 0, "locality": 1, "localadmin": 2, "region": 3},
     ),
 }
@@ -112,7 +114,7 @@ def build_de_table() -> gpd.GeoDataFrame:
             continue
         cand["prio"] = cand["subtype"].map(SUBTYPE_PRIO)
         best = cand.sort_values(["prio", "km2"], ascending=[True, False]).iloc[0]
-        if c["population"] >= config.MIN_POP:
+        if c["population"] >= config.MIN_POP or c["wikidata"] in config.AMTLICH_GROSSSTADT:
             status = "Großstadt"
         else:
             status = "Grenzfall"

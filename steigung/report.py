@@ -32,7 +32,8 @@ METHODIK = {
     "stadtgrenzen": "Overture Divisions (OSM-Verwaltungsgrenzen): kreisfreie Städte = county, "
                     "kreisangehörige = locality, Berlin/Hamburg = region.",
     "staedteliste": "Overture Divisions, locality class=city, OSM-Tag population >= 100.000. "
-                    "Wikipedia/Destatis waren nicht erreichbar. Orte mit 97.000–99.999 laut OSM "
+                    "Wikipedia/Destatis waren nicht erreichbar. Siegen liegt im OSM-Tag knapp darunter (99.403), "
+                    "ist amtlich aber über 100.000 EW und zählt daher als Großstadt. Orte mit 97.000–99.999 laut OSM "
                     "sind als 'Grenzfall' mitgerechnet, aber nicht für Top 3/Vergleichsstadt verwendet.",
     "hoehenmodell": "Primär Copernicus DEM GLO-30 (1\", DSM). Gegenprüfung mit SRTM 1\" "
                     "(AWS Terrain Tiles/Skadi). Bilineare Interpolation an den Knoten.",
@@ -52,8 +53,10 @@ METHODIK = {
                "Lausanne, Bern, Winterthur, Luzern, St. Gallen, Lugano, Biel/Bienne. Grenze = politische Gemeinde "
                "(OSM localadmin). Gleiche Methode, nur Gesamtrang.",
     "luxemburg": "Luxemburg-Stadt auf Leserwunsch, Grenze = Gemeinde. Gleiche Methode, nur Gesamtrang.",
-    "wunschstaedte": "Tübingen und Pirmasens auf Leserwunsch. Beide liegen unter 100.000 EW, laufen daher außer "
-                     "Konkurrenz: Gesamtrang, aber kein Rang im deutschen Großstadt-Ranking.",
+    "wunschstaedte": "Reddit-Wishlist: Tübingen, Pirmasens, Marburg, Niedernhausen (Gemeinde) und Engenhahn (Ortsteil von "
+                     "Niedernhausen) auf Leserwunsch. Alle liegen unter 100.000 EW und laufen daher außer Konkurrenz: "
+                     "Gesamtrang, aber kein Rang im deutschen Großstadt-Ranking. Sehr kleine Gebiete wie Engenhahn "
+                     "(wenige Straßenkilometer) sind statistisch weniger belastbar.",
     "steilste_strecke": "Zusammenhängende Kantenfolge gleichen Straßennamens, 100–800 m, maximale Netto-Steigung. "
                         "Konservativ: Minimum aus Copernicus und SRTM, Richtung muss übereinstimmen.",
 }

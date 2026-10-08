@@ -17,6 +17,8 @@ METRIC_CRS = 25832
 MIN_EDGE_LEN_M = 10.0      # kürzere Kanten werden kontrahiert (DEM-Rauschen)
 OUTLIER_GRADE = 0.40       # > 40 % = unplausibel -> markiert, nicht gelöscht
 MIN_POP = 100_000
+# Amtlich über 100.000 EW, obwohl der OSM-Tag darunter liegt (Wikidata-ID -> Name)
+AMTLICH_GROSSSTADT = {"Q3167": "Siegen"}
 BORDERLINE_POP = 97_000    # 97k..100k: als Grenzfall mitgerechnet und markiert
 
 GRADE_BINS = [0, 2, 4, 6, 8, 10, 12, 15, 20, 30, 40, 1000]  # in %

@@ -4,6 +4,8 @@ from __future__ import annotations
 import base64
 import json
 import logging
+from concurrent.futures import ProcessPoolExecutor
+from types import SimpleNamespace
 
 import geopandas as gpd
 import numpy as np
@@ -12,7 +14,7 @@ import shapely
 from pyproj import Transformer
 
 from . import config, metrics
-from .cities import build_city_table
+from .cities import build_city_table, slug
 from .dem import DemSampler
 from .pipeline import load_network
 
@@ -66,6 +68,7 @@ def city_payload(city: str, row, crow: dict):
         off.append(off[-1] + len(c))
         gr.append(int(round(1000 * grade)))
         ln.append(int(round(L)))
+        name = None if pd.isna(name) else name
         if name not in name_idx:
             name_idx[name] = len(names)
             names.append(name)
@@ -116,7 +119,7 @@ def city_payload(city: str, row, crow: dict):
             "drive_srtm_hm_pro_km", "drive_srtm_anteil_ueber_6pct", "ausreisser_n", "einwohner_osm",
             "rang_hm_pro_km", "rang_anteil_6pct", "rang_gesamt_hm_pro_km"]
     return {
-        "name": city,
+        "name": city, "slug": slug(city),
         "m": {k: (None if pd.isna(crow.get(k)) else float(crow.get(k))) for k in keys},
         "hist": crow["hist_km"], "hist_srtm": crow["hist_km_srtm"],
         "edges": {"xy": xy, "z": z, "off": off, "g": gr, "len": ln, "name": nm, "cls": cl},
@@ -132,55 +135,65 @@ def _b64(path):
     return base64.b64encode(path.read_bytes()).decode()
 
 
-def build_html():
-    cities = build_city_table().set_index("stadt")
-    df = pd.read_csv(config.RESULTS / "staedte_kennzahlen.csv")
-    top = json.loads((config.RESULTS / "top_staedte.json").read_text())
-    store = json.loads((config.CACHE / "city_results.json").read_text())
-    sel = [r["stadt"] for r in top["top3_hm_pro_km"]] + [top["flachste_grossstadt"]["stadt"]]
-    roles = ["top"] * 3 + ["ref"]
-    # Österreich: steilste Landeshauptstadt, außerdem Innsbruck (Alpenstadt, häufigste Vergleichsfrage)
-    # Vergleichsländer: jeweils die steilste Stadt, für Österreich außerdem Innsbruck (Alpenstadt)
-    for key, cc, extra in (("oesterreich", "AT", "Innsbruck"), ("schweiz", "CH", None)):
-        lst = [r["stadt"] for r in top.get(key, [])]
-        for c in ([lst[0]] if lst else []) + ([extra] if extra in lst else []):
-            if c not in sel:
-                sel.append(c)
-                roles.append(cc)
-    payload = []
-    for c in sel:
+START_CITY = "Wuppertal"   # Startstadt, wird in index.html direkt eingebettet
+DIST = config.ROOT / "dist"
+
+
+def _clean(o):
+    """NaN/Inf -> None (gültiges JSON); nur für kleine Strukturen gedacht."""
+    if isinstance(o, float):
+        return o if np.isfinite(o) else None
+    if isinstance(o, dict):
+        return {k: _clean(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_clean(v) for v in o]
+    return o
+
+
+def _dump(obj) -> str:
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+
+
+def _export_one(args):
+    city, geom, crow = args
+    payload = city_payload(city, SimpleNamespace(geometry=geom), crow)
+    (DIST / "staedte" / f"{slug(city)}.json").write_text(_dump(payload))
+    return city
+
+
+def export_city_files(cities, df, store, only=None, workers=3):
+    """Eine JSON-Datei je Stadt: dist/staedte/<slug>.json (nur das, was im Browser angeklickt wird, wird geladen)."""
+    (DIST / "staedte").mkdir(parents=True, exist_ok=True)
+    jobs = []
+    for c in df["stadt"]:
+        if only and c not in only:
+            continue
         crow = {**store[c], **df[df.stadt == c].iloc[0].to_dict()}
-        log.info("Viz-Export %s", c)
-        payload.append(city_payload(c, cities.loc[c], crow))
-    ranking = df[["stadt", "land", "status", "hm_pro_km", "anteil_ueber_6pct", "p90_steigung_pct",
-                  "mittl_steigung_pct", "drive_srtm_hm_pro_km", "strassen_km", "einwohner_osm"]]
-    val = json.loads((config.RESULTS / "validierung.json").read_text()) \
-        if (config.RESULTS / "validierung.json").exists() else []
-    for v in val:
-        v.pop("profil_cop30", None)
-    data = {
-        "cities": payload, "featured": sel, "roles": roles, "ranking": ranking.round(3).to_dict("records"),
-        "bins": config.GRADE_BINS, "meta": {k: top[k] for k in ("stand", "overture_release", "methodik",
-                                                                   "bekannte_grenzen", "ranking_vergleich",
-                                                                   "dem_vergleich", "anzahl_staedte",
-                                                                   "anzahl_staedte_at", "anzahl_staedte_ch",
-                                                                   "anzahl_staedte_lu", "anzahl_wunschstaedte",
-                                                                   "anzahl_staedte_gesamt")},
-        "validation": val,
-    }
-    js = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+        jobs.append((c, cities.loc[c].geometry, crow))
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        for i, c in enumerate(ex.map(_export_one, jobs), 1):
+            log.info("[%d/%d] %s.json", i, len(jobs), slug(c))
+    (DIST / ".htaccess").write_text(
+        "# Stadtdateien komprimiert und kurz gecacht ausliefern (Apache)\n"
+        "<IfModule mod_deflate.c>\nAddOutputFilterByType DEFLATE application/json text/html\n</IfModule>\n"
+        "<IfModule mod_expires.c>\nExpiresActive On\nExpiresByType application/json \"access plus 1 day\"\n</IfModule>\n")
+
+
+def _assemble(data: dict) -> str:
     tpl = (config.WEB / "template.html").read_text()
     vendor = config.WEB / "vendor"
     three = (vendor / "three-bundle.min.js").read_text()
     assert "</script" not in three.lower()
-    html = (tpl.replace("/*__DATA__*/null", js)
+    return (tpl.replace("/*__DATA__*/null", _dump(data).replace("</", "<\\/"))
             .replace("/*__D3__*/", (vendor / "d3.min.js").read_text())
             .replace("/*__THREE__*/", three)
             .replace("__FONT_DISPLAY_500__", _b64(vendor / "chakra-petch-latin-500-normal.woff2"))
             .replace("__FONT_DISPLAY_700__", _b64(vendor / "chakra-petch-latin-700-normal.woff2"))
             .replace("__FONT_MONO_400__", _b64(vendor / "jetbrains-mono-latin-400-normal.woff2"))
             .replace("__FONT_MONO_600__", _b64(vendor / "jetbrains-mono-latin-600-normal.woff2")))
-    out = config.ROOT / "index.html"
+
+
+def _document(html: str) -> str:
     # <title> und <meta description> gehören in den <head> (Suchmaschinen, Link-Vorschauen)
     head_tags, body = [], html
     for _ in range(2):
@@ -189,10 +202,61 @@ def build_html():
             end = body.index("</title>") + 8 if body.startswith("<title>") else body.index(">") + 1
             head_tags.append(body[:end])
             body = body[end:]
-    out.write_text('<!doctype html>\n<html lang="de">\n<head>\n<meta charset="utf-8">\n'
-                   '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
-                   + "\n".join(head_tags) + '\n</head>\n<body>\n' + body + '\n</body>\n</html>\n')
-    # Variante ohne Dokumentgerüst (für die Veröffentlichung als Artifact)
-    (config.CACHE / "index_fragment.html").write_text(html)
-    log.info("index.html geschrieben (%.1f MB)", out.stat().st_size / 1e6)
-    return out
+    return ('<!doctype html>\n<html lang="de">\n<head>\n<meta charset="utf-8">\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+            + "\n".join(head_tags) + '\n</head>\n<body>\n' + body + '\n</body>\n</html>\n')
+
+
+def build_html(only=None, workers=3, skip_export=False):
+    cities = build_city_table().set_index("stadt")
+    df = pd.read_csv(config.RESULTS / "staedte_kennzahlen.csv")
+    top = json.loads((config.RESULTS / "top_staedte.json").read_text())
+    store = json.loads((config.CACHE / "city_results.json").read_text())
+
+    # Hervorgehobene Städte (Tabs): Top 3, flachste Großstadt, steilste AT/CH-Stadt, Innsbruck
+    sel = [r["stadt"] for r in top["top3_hm_pro_km"]] + [top["flachste_grossstadt"]["stadt"]]
+    roles = ["top"] * 3 + ["ref"]
+    for key, cc, extra in (("oesterreich", "AT", "Innsbruck"), ("schweiz", "CH", None)):
+        lst = [r["stadt"] for r in top.get(key, [])]
+        for c in ([lst[0]] if lst else []) + ([extra] if extra in lst else []):
+            if c not in sel:
+                sel.append(c)
+                roles.append(cc)
+
+    if not skip_export:
+        export_city_files(cities, df, store, only, workers)
+
+    df["slug"] = df["stadt"].map(slug)
+    ranking = df[["stadt", "slug", "land", "status", "hm_pro_km", "anteil_ueber_6pct", "p90_steigung_pct",
+                  "mittl_steigung_pct", "drive_srtm_hm_pro_km", "strassen_km", "einwohner_osm"]]
+    val = json.loads((config.RESULTS / "validierung.json").read_text()) \
+        if (config.RESULTS / "validierung.json").exists() else []
+    for v in val:
+        v.pop("profil_cop30", None)
+    data = {
+        "featured": sel, "roles": roles, "start": slug(START_CITY),
+        "ranking": ranking.round(3).to_dict("records"),
+        "bins": config.GRADE_BINS, "meta": {k: top[k] for k in ("stand", "overture_release", "methodik",
+                                                                   "bekannte_grenzen", "ranking_vergleich",
+                                                                   "dem_vergleich", "anzahl_staedte",
+                                                                   "anzahl_staedte_at", "anzahl_staedte_ch",
+                                                                   "anzahl_staedte_lu", "anzahl_wunschstaedte",
+                                                                   "anzahl_staedte_gesamt")},
+        "validation": val,
+    }
+
+    def load(c):
+        return json.loads((DIST / "staedte" / f"{slug(c)}.json").read_text())
+
+    # Web-Variante: nur die Startstadt eingebettet, alles andere wird bei Bedarf nachgeladen
+    data = _clean(data)
+    html = _assemble({**data, "inline": {slug(START_CITY): load(START_CITY)}})
+    (DIST / "index.html").write_text(_document(html))
+    # Einzeldatei-Variante (z. B. für Artifact/E-Mail): hervorgehobene Städte eingebettet, kein Nachladen
+    frag = _assemble({**data, "offline": True, "inline": {slug(c): load(c) for c in sel}})
+    (config.CACHE / "index_fragment.html").write_text(frag)
+    n = len(list((DIST / "staedte").glob("*.json")))
+    size = sum(f.stat().st_size for f in (DIST / "staedte").glob("*.json")) / 1e6
+    log.info("dist/index.html %.1f MB, %d Stadtdateien (%.0f MB, unkomprimiert)",
+             (DIST / "index.html").stat().st_size / 1e6, n, size)
+    return DIST / "index.html"

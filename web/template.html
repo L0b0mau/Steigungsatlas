@@ -99,6 +99,14 @@ input[type=range]{accent-color:var(--magenta);width:140px}
   background:color-mix(in srgb,var(--bg) 80%,transparent);transform:translate(-50%,-130%);will-change:transform}
 .citylabel small{display:block;font-family:var(--font-mono);font-weight:400;font-size:var(--step--1);letter-spacing:0;text-transform:none;color:var(--fg)}
 .citylabel.a{color:var(--amber)} .citylabel.b{color:var(--cyan)}
+select.switch{max-width:15em;text-transform:none;letter-spacing:0}
+#loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;font-family:var(--font-mono);font-size:var(--step-0);letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);background:color-mix(in srgb,var(--bg) 55%,transparent);z-index:4;text-align:center;padding:0 24px}
+#view.busy #loading{display:flex;animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+#loading.err{animation:none;color:var(--amber);letter-spacing:0;text-transform:none;display:flex}
+#rank .row{cursor:pointer}
+#rank .row.na{cursor:default;opacity:.55}
+#rank .lbl.sel{font-weight:700}
 
 /* Kennzahlen */
 .side{display:grid;gap:20px;min-width:0}
@@ -155,7 +163,7 @@ footer{font-family:var(--font-mono);font-size:var(--step--1);color:var(--muted);
     <div>
       <div class="eyebrow">Steigungsatlas · Straßennetz „drive“ · längengewichtet</div>
       <h1>Höhenmeter <span class="slash">//</span> pro Straßenkilometer</h1>
-      <p id="lede">Welche deutsche Großstadt hat das steilste Straßennetz? Die drei steilsten Städte im Gelände, daneben die flachste als Maßstab. Zum Vergleich: die österreichischen Landeshauptstädte, die zehn größten Schweizer Städte und Luxemburg, dazu Tübingen und Pirmasens auf Leserwunsch.</p>
+      <p id="lede">Welche deutsche Großstadt hat das steilste Straßennetz? Die drei steilsten Städte im Gelände, daneben die flachste als Maßstab. Zum Vergleich: die österreichischen Landeshauptstädte, die zehn größten Schweizer Städte und Luxemburg, dazu die Reddit-Wishlist (Tübingen, Pirmasens, Marburg, Niedernhausen, Engenhahn). Jede Stadt lässt sich im Ranking anklicken und mit jeder anderen vergleichen.</p>
     </div>
     <div class="stamp" id="stamp"></div>
   </header>
@@ -171,10 +179,12 @@ footer{font-family:var(--font-mono);font-size:var(--step--1);color:var(--muted);
         <div class="citylabel a" id="lbla" hidden></div>
         <div class="citylabel b" id="lblb" hidden></div>
         <div id="tip" hidden></div>
+        <div id="loading" role="status"></div>
       </div>
       <div class="controls">
         <label class="ctl" for="exag">Überhöhung <input type="range" id="exag" min="1" max="8" step="0.5" value="3"><output id="exagout">3×</output></label>
-        <button class="switch" id="cmp" aria-pressed="false" type="button">Vergleich mit flachster Stadt</button>
+        <button class="switch" id="cmp" aria-pressed="false" type="button">Vergleich</button>
+        <label class="ctl" for="partner">mit <select class="switch" id="partner"></select></label>
         <button class="switch" id="spin" aria-pressed="false" type="button">Rotation</button>
       </div>
     </div>
@@ -206,6 +216,7 @@ footer{font-family:var(--font-mono);font-size:var(--step--1);color:var(--muted);
 
   <section class="panel">
     <div class="panel-h"><h2>Alle Städte</h2>
+      <div class="rankctl" role="group" aria-label="Rubrik" id="groupctl"></div>
       <div class="rankctl" role="group" aria-label="Sortierung" id="rankctl"></div>
     </div>
     <div class="panel-b"><div id="rank"></div><p class="note" id="ranknote"></p></div>
@@ -241,28 +252,42 @@ const SCOL = ["#1c8fb0", "#2fe6ff", "#ff3fd2", "#ff9a2a", "#ff3b1f"];
 STOPS.forEach((_, i) => document.documentElement.style.setProperty("--c" + i, SCOL[i]));
 const gradeColor = d3.scaleLinear().domain(STOPS).range(SCOL).interpolate(d3.interpolateRgb).clamp(true);
 
-const cities = DATA.cities;
-const roles = DATA.roles || cities.map((_, i) => i === cities.length - 1 ? "ref" : "top");
-const flatIdx = roles.indexOf("ref");
+const R = DATA.ranking;
+const BY = new Map(R.map(d => [d.slug, d])), BYNAME = new Map(R.map(d => [d.stadt, d]));
+const OFFLINE = !!DATA.offline, INLINE = DATA.inline || {};
+const START = DATA.start;
+const FLAT = BYNAME.get(DATA.featured[DATA.roles.indexOf("ref")]).slug;
 const AT_COL = "#f4f7ff";
-const isForeign = i => roles[i] === "AT" || roles[i] === "CH";
-const state = { cur: 0, compare: false, exag: 3, spin: false };
+const isWish = s => BY.get(s).status === "Wunschstadt";
+const isForeign = s => BY.get(s).land !== "DE";
+const available = s => !OFFLINE || s in INLINE;
+const loaded = new Map(), pend = new Map();
+const city = s => loaded.get(s);
+const state = { cur: START, other: null, compare: false, exag: 3, spin: false, ready: false };
+const want = { cur: START, other: null, compare: false };
 const GAP = 1500; /* Abstand zwischen den Städten im Vergleich, in Metern */
+/* Standard-Vergleichspartner: steile Städte gegen die flachste, flache gegen Wuppertal (Startstadt) */
+const medianHm = d3.median(R.filter(d => d.land === "DE"), d => d.hm_pro_km);
+const defaultPartner = s => s === FLAT ? START : s === START ? FLAT : (BY.get(s).hm_pro_km >= medianHm ? FLAT : START);
+const GROUP_LAB = { DE: "Deutschland", AT: "Österreich", CH: "Schweiz", LU: "Luxemburg", WISH: "Reddit-Wishlist" };
+const groupOf = d => d.status === "Wunschstadt" ? "WISH" : d.land;
 
 /* ---------- Kopf ---------- */
 document.getElementById("stamp").innerHTML =
   `Stand <b>${DATA.meta.stand}</b><br>Overture <b>${DATA.meta.overture_release}</b> · OSM<br>` +
-  `DEM <b>Copernicus GLO-30</b> / SRTM<br><b>${DATA.meta.anzahl_staedte}</b> DE · <b>${DATA.meta.anzahl_staedte_at || 0}</b> AT · <b>${DATA.meta.anzahl_staedte_ch || 0}</b> CH · <b>${DATA.meta.anzahl_staedte_lu || 0}</b> LU · <b>${DATA.meta.anzahl_wunschstaedte || 0}</b> Wunsch`;
+  `DEM <b>Copernicus GLO-30</b> / SRTM<br><b>${DATA.meta.anzahl_staedte}</b> DE · <b>${DATA.meta.anzahl_staedte_at || 0}</b> AT · <b>${DATA.meta.anzahl_staedte_ch || 0}</b> CH · <b>${DATA.meta.anzahl_staedte_lu || 0}</b> LU · <b>${DATA.meta.anzahl_wunschstaedte || 0}</b> Wishlist`;
 
-const tabs = d3.select("#tabs").selectAll("button").data(cities).join("button")
-  .attr("class", (d, i) => "tab" + (roles[i] === "ref" ? " ref" : isForeign(i) ? " at" : ""))
-  .attr("role", "tab").attr("type", "button").attr("id", (d, i) => "tab" + i)
-  .html((d, i) => `<span class="k">${roles[i] === "ref" ? "REF" : isForeign(i) ? roles[i] : "#" + (i + 1)}</span><span>${d.name}</span><span class="v">${de(fmt1(d.m.hm_pro_km))} Hm/km</span>`)
-  .on("click", (e, d) => select(cities.indexOf(d)));
+const FEAT = DATA.featured.map(n => BYNAME.get(n));
+const tabs = d3.select("#tabs").selectAll("button").data(FEAT).join("button")
+  .attr("class", (d, i) => "tab" + (DATA.roles[i] === "ref" ? " ref" : isForeign(d.slug) ? " at" : ""))
+  .attr("role", "tab").attr("type", "button").attr("id", d => "tab_" + d.slug)
+  .html((d, i) => `<span class="k">${DATA.roles[i] === "ref" ? "REF" : isForeign(d.slug) ? d.land : "#" + (i + 1)}</span><span>${d.stadt}</span><span class="v">${de(fmt1(d.hm_pro_km))} Hm/km</span>`)
+  .on("click", (e, d) => setCity(d.slug));
 
 /* ---------- 3D ---------- */
 const view = document.getElementById("view");
-let renderer, scene, camera, controls, composer, bloom, raycaster, groups = [], hoverLine, pickTargets = [];
+let renderer, scene, camera, controls, composer, bloom, raycaster, hoverLine, pickTargets = [];
+const groups = new Map();
 let webgl = true;
 try {
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -285,7 +310,7 @@ function terrainBase(c) {
   return h[Math.floor(h.length * 0.02)] || 0;
 }
 
-function buildCity(c, idx) {
+function buildCity(c, slug) {
   const g = new THREE.Group();
   const base = terrainBase(c);
   c._base = base;
@@ -339,7 +364,7 @@ function buildCity(c, idx) {
   lg.computeBoundingSphere();
   const lmat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 1 });
   const roads = new THREE.LineSegments(lg, lmat);
-  roads.userData = { city: idx, segEdge };
+  roads.userData = { city: slug, segEdge };
   g.add(roads);
 
   /* Stadtgrenze */
@@ -429,7 +454,6 @@ function init3d() {
   bloom = new THREE.UnrealBloomPass(new THREE.Vector2(512, 512), 0.75, 0.55, 0.12);
   composer.addPass(bloom);
   composer.addPass(new THREE.OutputPass());
-  cities.forEach((c, i) => { const g = buildCity(c, i); groups.push(g); scene.add(g); });
   raycaster = new THREE.Raycaster();
   hoverLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffffff }));
   hoverLine.renderOrder = 10; scene.add(hoverLine);
@@ -446,9 +470,9 @@ function resize() {
 
 function tick(now) {
   if (camAnim) camAnim(now);
-  groups.forEach(g => g.scale.y = state.exag);
+  groups.forEach(g => { g.scale.y = state.exag; });
   hoverLine.scale.y = state.exag;
-  const spot = groups[state.cur].userData.spot;
+  const spot = groups.get(state.cur)?.userData.spot;
   if (spot && !reduced) spot[1].material.opacity = (0.2 + 0.25 * (0.5 + 0.5 * Math.sin(now / 400))) * (spot[1].material.userData.k ?? 1);
   controls.autoRotate = state.spin && !reduced;
   controls.update();
@@ -456,36 +480,35 @@ function tick(now) {
   composer.render();
 }
 
-/* Vergleichspartner: Top-Städte gegen die flachste, flachste und AT/CH-Städte gegen Platz 1 */
-const otherIdx = (i = state.cur) => roles[i] === "top" ? flatIdx : 0;
 /* Ausdehnung einer Stadt in lokalen Koordinaten (x: Ost, z: -Nord) */
 function bounds(c) { const T = c.terrain; return { x0: T.x0, x1: T.x0 + T.nx * T.step, y0: T.y0, y1: T.y0 + T.ny * T.step }; }
+const partner = () => state.compare ? state.other : null;
 function applyVisibility() {
   if (!webgl) return;
-  const other = otherIdx();
-  groups.forEach((g, i) => {
-    const on = i === state.cur || (state.compare && i === other);
+  const other = partner();
+  groups.forEach((g, s) => {
+    const on = s === state.cur || s === other;
     setOpacity(g, on ? 1 : 0);
     g.position.set(0, 0, 0);
     if (g.userData.spot) g.userData.spot[1].material.userData.k = on ? 1 : 0;
   });
-  if (state.compare) {
+  if (other) {
     /* links die gewählte Stadt, rechts die Vergleichsstadt */
-    const a = bounds(cities[state.cur]), b = bounds(cities[other]);
+    const a = bounds(city(state.cur)), b = bounds(city(other));
     /* gemeinsame Ausdehnung um den Ursprung zentrieren */
     const shift = ((a.x1 - a.x0) - (b.x1 - b.x0)) / 2;
     /* beide Städte in Nord-Süd-Richtung mittig ausrichten (Szene: z = -Nord) */
-    groups[state.cur].position.set(-GAP / 2 - a.x1 + shift, 0, (a.y0 + a.y1) / 2);
-    groups[other].position.set(GAP / 2 - b.x0 + shift, 0, (b.y0 + b.y1) / 2);
+    groups.get(state.cur).position.set(-GAP / 2 - a.x1 + shift, 0, (a.y0 + a.y1) / 2);
+    groups.get(other).position.set(GAP / 2 - b.x0 + shift, 0, (b.y0 + b.y1) / 2);
   }
-  pickTargets = groups.filter(g => g.visible).map(g => g.userData.roads);
+  pickTargets = [...groups.values()].filter(g => g.visible).map(g => g.userData.roads);
 }
 /* Kameraabstand, damit alles Sichtbare ins Bild passt */
 function frameDistance() {
-  const c = cities[state.cur], a = bounds(c);
+  const c = city(state.cur), a = bounds(c);
   let w = a.x1 - a.x0, d = a.y1 - a.y0;
-  if (state.compare) {
-    const b = bounds(cities[otherIdx()]);
+  if (partner()) {
+    const b = bounds(city(partner()));
     w += (b.x1 - b.x0) + GAP; d = Math.max(d, b.y1 - b.y0);
   }
   const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), th = tv * camera.aspect;
@@ -495,9 +518,9 @@ function frameDistance() {
 const lbl = [document.getElementById("lbla"), document.getElementById("lblb")];
 const _v = new THREE.Vector3();
 function placeLabels() {
-  if (!state.compare) { lbl.forEach(l => l.hidden = true); return; }
-  [state.cur, otherIdx()].forEach((ci, k) => {
-    const c = cities[ci], b = bounds(c), g = groups[ci];
+  if (!partner() || !city(state.cur) || !city(partner())) { lbl.forEach(l => l.hidden = true); return; }
+  [state.cur, partner()].forEach((ci, k) => {
+    const c = city(ci), b = bounds(c), g = groups.get(ci);
     /* Schild über dem höchsten Straßenpunkt, nicht über dem Gelände (Innsbruck: Nordkette) */
     const maxH = (c._roadMax ??= d3.max(c.edges.z) - c._base) * state.exag;
     _v.set((b.x0 + b.x1) / 2, maxH, -b.y1).add(g.position).project(camera);
@@ -523,7 +546,7 @@ function pick(ev) {
   return { city: u.city, edge: u.segEdge[Math.floor(h.index / 2)], point: h.point, x: ev.clientX - r.left, y: ev.clientY - r.top };
 }
 function edgePositions(ci, e) {
-  const c = cities[ci], E = c.edges, base = c._base, pts = [];
+  const c = city(ci), E = c.edges, base = c._base, pts = [];
   let x = 0, y = 0;
   for (let v = E.off[e]; v < E.off[e + 1]; v++) {
     if (v === E.off[e]) { x = E.xy[2 * v]; y = E.xy[2 * v + 1]; } else { x += E.xy[2 * v]; y += E.xy[2 * v + 1]; }
@@ -533,14 +556,14 @@ function edgePositions(ci, e) {
 }
 function showTip(p) {
   if (!p) { tip.hidden = true; hoverLine.visible = false; return; }
-  const c = cities[p.city], E = c.edges;
+  const c = city(p.city), E = c.edges;
   const nm = c.names[E.name[p.edge]] || "ohne Namen";
   tip.innerHTML = `<b>${nm}</b><br>Steigung <span style="color:${gradeColor(E.g[p.edge] / 1000)}">${de(fmt1(E.g[p.edge] / 10))} %</span><br>Länge ${fmt0(E.len[p.edge])} m · ${c.name}`;
   tip.style.left = p.x + "px"; tip.style.top = p.y + "px";
   if (p.x > view.clientWidth - 220) tip.style.transform = "translate(calc(-100% - 12px),12px)"; else tip.style.transform = "";
   tip.hidden = false;
   hoverLine.geometry.dispose(); hoverLine.geometry = new THREE.BufferGeometry().setFromPoints(edgePositions(p.city, p.edge));
-  hoverLine.position.copy(groups[p.city].position);
+  hoverLine.position.copy(groups.get(p.city).position);
   hoverLine.visible = true;
 }
 function bindPointer() {
@@ -558,7 +581,7 @@ function bindPointer() {
     if (!down || Math.hypot(ev.clientX - down[0], ev.clientY - down[1]) > 4) return;
     const p = pick(ev);
     if (ev.pointerType !== "mouse") { lastPick = p; showTip(p); }
-    if (p) { const pts = edgePositions(p.city, p.edge); const mid = pts[Math.floor(pts.length / 2)].clone(); mid.y *= state.exag; mid.add(groups[p.city].position); flyTo(mid, 900); state.spin = false; syncSpin(); }
+    if (p) { const pts = edgePositions(p.city, p.edge); const mid = pts[Math.floor(pts.length / 2)].clone(); mid.y *= state.exag; mid.add(groups.get(p.city).position); flyTo(mid, 900); state.spin = false; syncSpin(); }
   });
 }
 
@@ -573,7 +596,7 @@ const kp = d3.select("#kpis").selectAll(".kpi").data(KPI).join("div").attr("clas
   .html(d => `<span class="lab">${d.lab}</span><span class="val"><span class="n">0</span><small>${d.unit}</small></span><span class="sub"></span>`);
 const shown = {};
 function updateKpis() {
-  const c = cities[state.cur], o = cities[otherIdx()];
+  const c = city(state.cur), o = partner() ? city(partner()) : null;
   document.getElementById("kpisub").textContent = `${c.name} · ${fmt0(c.m.strassen_km)} Straßen-km`;
   kp.each(function (d) {
     const el = d3.select(this), to = c.m[d.k], from = shown[d.k] ?? 0;
@@ -581,12 +604,12 @@ function updateKpis() {
     const n = el.select(".n");
     if (reduced) n.text(de(d.f(to)));
     else n.transition().duration(900).ease(d3.easeCubicOut).tween("text", () => { const i = d3.interpolateNumber(from, to); return t => n.text(de(d.f(i(t)))); });
-    const isAt = isForeign(state.cur);
+    const mt = BY.get(state.cur), isAt = mt.land !== "DE" || mt.status === "Wunschstadt";
     let sub = d.k === "hm_pro_km"
-      ? (isAt ? `${roles[state.cur]} · Gesamtrang ${c.m.rang_gesamt_hm_pro_km} von ${R.length}` : `Rang ${c.m.rang_hm_pro_km} von ${DATA.meta.anzahl_staedte} (DE)`)
+      ? (isAt ? `${mt.status === "Wunschstadt" ? "Wishlist" : mt.land} · Gesamtrang ${c.m.rang_gesamt_hm_pro_km} von ${R.length}` : `Rang ${c.m.rang_hm_pro_km} von ${DATA.meta.anzahl_staedte} (DE)`)
       : d.k === "anteil_ueber_6pct" && !isAt ? `Rang ${c.m.rang_anteil_6pct} nach Anteil > 6 %` : "";
     if (d.srtm && c.m[d.srtm] != null) sub += `${sub ? " · " : ""}SRTM ${de(d.f(c.m[d.srtm]))}`;
-    if (state.compare) sub = `<span class="vs">vs. ${o.name}: ${de(d.f(o.m[d.k]))}</span>`;
+    if (o) sub = `<span class="vs">vs. ${o.name}: ${de(d.f(o.m[d.k]))}</span>`;
     el.select(".sub").html(sub || "&nbsp;");
   });
 }
@@ -605,22 +628,22 @@ hsvg.append("text").attr("x", H.w - H.m.r).attr("y", H.m.t + 4).attr("text-ancho
 const hbars = hsvg.append("g"), hcmp = hsvg.append("g");
 const share = c => { const t = d3.sum(c.hist); return c.hist.map(v => 100 * v / t); };
 function updateHist() {
-  const c = cities[state.cur], o = cities[otherIdx()];
-  const a = share(c), b = share(o);
-  hy.domain([0, d3.max(state.compare ? a.concat(b) : a) * 1.08]).nice();
+  const c = city(state.cur), o = partner() ? city(partner()) : null;
+  const a = share(c), b = o ? share(o) : [];
+  hy.domain([0, d3.max(a.concat(b)) * 1.08]).nice();
   const dur = reduced ? 0 : 750;
   hyAxis.transition().duration(dur).call(d3.axisLeft(hy).ticks(5).tickFormat(d => d + "%").tickSizeOuter(0));
   hbars.selectAll("rect").data(a).join(enter => enter.append("rect").attr("x", (d, i) => hx(binLabels[i])).attr("width", hx.bandwidth()).attr("y", hy(0)).attr("height", 0))
     .attr("fill", (d, i) => gradeColor((BINS[i] + Math.min(BINS[i + 1], 40)) / 200))
     .style("filter", "drop-shadow(0 0 4px rgba(47,230,255,.35))")
     .transition().duration(dur).ease(d3.easeCubicInOut).attr("y", d => hy(d)).attr("height", d => hy(0) - hy(d));
-  hcmp.selectAll("rect").data(state.compare ? b : []).join(
+  hcmp.selectAll("rect").data(o ? b : []).join(
     enter => enter.append("rect").attr("x", (d, i) => hx(binLabels[i]) - 1).attr("width", hx.bandwidth() + 2).attr("y", hy(0)).attr("height", 0)
       .attr("fill", "none").attr("stroke", C("--cyan")).attr("stroke-width", 1.4).attr("stroke-dasharray", "3 2"),
     update => update, exit => exit.transition().duration(dur / 2).attr("y", hy(0)).attr("height", 0).remove())
     .transition().duration(dur).ease(d3.easeCubicInOut).attr("y", d => hy(d)).attr("height", d => hy(0) - hy(d));
   const flatShare = a[0] + a[1];
-  document.getElementById("histnote").innerHTML = state.compare
+  document.getElementById("histnote").innerHTML = o
     ? `Gefüllt: ${c.name}. Gestrichelt: ${o.name}. Gleiche Skala.`
     : `${de(fmt0(flatShare))} % der Straßen-km in ${c.name} liegen unter 4 % Steigung.`;
 }
@@ -640,8 +663,13 @@ const psrtm = psvg.append("path").attr("fill", "none").attr("stroke", C("--muted
 const pline = psvg.append("path").attr("fill", "none").attr("stroke", "url(#pg)").attr("stroke-width", 3).style("filter", "drop-shadow(0 0 5px rgba(255,63,210,.6))");
 const plab = psvg.append("g");
 function drawProfile() {
-  const c = cities[state.cur], s = c.spot;
-  if (!s) return;
+  const c = city(state.cur), s = c.spot;
+  document.getElementById("spotcity").textContent = c.name;
+  if (!s) {
+    document.getElementById("spotname").textContent = "keine Strecke gefunden";
+    document.getElementById("spotdl").innerHTML = "<dt>Hinweis</dt><dd>Keine zusammenhängende Strecke ≥ 100 m mit gleichem Straßennamen.</dd>";
+    [parea, psrtm, pline].forEach(p => p.attr("d", null)); plab.selectAll("*").remove(); return;
+  }
   PR.w = Math.max(300, document.getElementById("profile").clientWidth || 760);
   PR.h = PR.w < 520 ? 220 : 250;
   psvg.attr("viewBox", `0 0 ${PR.w} ${PR.h}`);
@@ -678,16 +706,15 @@ function drawProfile() {
 }
 document.getElementById("spotreplay").onclick = drawProfile;
 document.getElementById("spotfocus").onclick = () => {
-  const c = cities[state.cur];
+  const c = city(state.cur);
   if (!webgl || !c._spotCenter) return;
-  const t = c._spotCenter.clone(); t.y *= state.exag; t.add(groups[state.cur].position);
+  const t = c._spotCenter.clone(); t.y *= state.exag; t.add(groups.get(state.cur).position);
   state.spin = false; syncSpin();
   flyTo(t, 1400);
   view.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
 };
 
 /* ---------- Ranking ---------- */
-const R = DATA.ranking;
 const featured = new Map(DATA.featured.map((n, i) => [n, i]));
 const SORTS = [
   { k: "hm_pro_km", lab: "Hm/km", f: fmt1 },
@@ -703,21 +730,27 @@ const rnoise = rsvg.append("g");
 const rrows = rsvg.append("g");
 d3.select("#rankctl").selectAll("button").data(SORTS).join("button").attr("class", "switch").attr("type", "button")
   .attr("aria-pressed", d => d.k === rankKey).text(d => d.lab).on("click", (e, d) => { rankKey = d.k; drawRank(); });
-const hlColor = n => { const i = featured.get(n); return i === undefined ? null : roles[i] === "ref" ? SCOL[1] : isForeign(i) ? AT_COL : [C("--amber"), SCOL[2], SCOL[3]][i]; };
+const hlColor = n => { const i = featured.get(n); return i === undefined ? null : DATA.roles[i] === "ref" ? SCOL[1] : DATA.roles[i] === "top" ? [C("--amber"), SCOL[2], SCOL[3]][i] : AT_COL; };
+let groupKey = "all";
+const GROUPS = [["all", "Alle"], ["DE", "Deutschland"], ["AT", "Österreich"], ["CH", "Schweiz"], ["LU", "Luxemburg"], ["WISH", "Reddit-Wishlist"]];
+d3.select("#groupctl").selectAll("button").data(GROUPS).join("button").attr("class", "switch").attr("type", "button")
+  .text(d => d[1]).on("click", (e, d) => { groupKey = d[0]; drawRank(); });
 function drawRank() {
   d3.selectAll("#rankctl button").attr("aria-pressed", d => d.k === rankKey);
+  d3.selectAll("#groupctl button").attr("aria-pressed", d => d[0] === groupKey);
+  const RV = R.filter(d => groupKey === "all" || groupOf(d) === groupKey);
   RW.w = Math.max(300, document.getElementById("rank").clientWidth || 760);
   RW.m.l = RW.w < 520 ? 124 : 150; RW.m.r = RW.w < 520 ? 44 : 64;
-  rsvg.attr("viewBox", `0 0 ${RW.w} ${R.length * RW.row + RW.m.t + 8}`);
+  rsvg.attr("viewBox", `0 0 ${RW.w} ${RV.length * RW.row + RW.m.t + 8}`);
   rrows.selectAll("g.row").select(".lbl").attr("x", RW.m.l - 8);
   rrows.selectAll("g.row").select("rect").attr("x", RW.m.l);
   const metric = rankKey === "stadt" ? "hm_pro_km" : rankKey;
-  const sorted = R.slice().sort((a, b) => rankKey === "stadt" ? d3.ascending(a.stadt, b.stadt) : d3.descending(a[rankKey], b[rankKey]));
+  const sorted = RV.slice().sort((a, b) => rankKey === "stadt" ? d3.ascending(a.stadt, b.stadt) : d3.descending(a[rankKey], b[rankKey]));
   const pos = new Map(sorted.map((d, i) => [d.stadt, i]));
   const x = d3.scaleLinear().domain([0, d3.max(R, d => d[metric])]).range([RW.m.l, RW.w - RW.m.r]);
   const sort = SORTS.find(s => s.k === metric);
   const dur = reduced ? 0 : 700;
-  const rows = rrows.selectAll("g.row").data(R, d => d.stadt).join(enter => {
+  const rows = rrows.selectAll("g.row").data(RV, d => d.slug).join(enter => {
     const g = enter.append("g").attr("class", "row").attr("transform", d => `translate(0,${RW.m.t + pos.get(d.stadt) * RW.row})`);
     g.append("title");
     g.append("text").attr("class", "rk val").attr("x", 4).attr("y", RW.row * 0.7);
@@ -726,11 +759,13 @@ function drawRank() {
     g.append("text").attr("class", "val num").attr("y", RW.row * 0.7);
     return g;
   });
+  rows.classed("na", d => !available(d.slug)).on("click", (e, d) => { if (available(d.slug)) { setCity(d.slug); view.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" }); } });
   rows.transition().duration(dur).ease(d3.easeCubicInOut).attr("transform", d => `translate(0,${RW.m.t + pos.get(d.stadt) * RW.row})`);
-  rows.select("title").text(d => `${d.stadt}${d.status === "Grenzfall" ? " (Grenzfall < 100.000 EW laut OSM)" : d.status === "Wunschstadt" ? " (Wunschstadt < 100.000 EW, außer Konkurrenz)" : ""}\nHm/km ${de(fmt1(d.hm_pro_km))} · >6 % ${de(fmt1(d.anteil_ueber_6pct))} % · P90 ${de(fmt1(d.p90_steigung_pct))} % · SRTM ${de(fmt1(d.drive_srtm_hm_pro_km))} Hm/km · ${fmt0(d.strassen_km)} km`);
+  rows.select("title").text(d => `${d.stadt}${d.status === "Grenzfall" ? " (Grenzfall < 100.000 EW laut OSM)" : d.status === "Wunschstadt" ? " (Reddit-Wishlist, außer Konkurrenz)" : ""}\nHm/km ${de(fmt1(d.hm_pro_km))} · >6 % ${de(fmt1(d.anteil_ueber_6pct))} % · P90 ${de(fmt1(d.p90_steigung_pct))} % · SRTM ${de(fmt1(d.drive_srtm_hm_pro_km))} Hm/km · ${fmt0(d.strassen_km)} km`);
   rows.select(".rk").text(d => String(pos.get(d.stadt) + 1).padStart(2, "0"));
   rows.select(".lbl").text(d => d.stadt + (d.status === "Grenzfall" ? " °" : d.status === "Wunschstadt" ? " *" : "") + (d.land !== "DE" ? " · " + d.land : "")).classed("dim", d => !featured.has(d.stadt) && d.land === "DE" && d.status !== "Wunschstadt")
     .style("fill", d => hlColor(d.stadt));
+  markRank();
   rows.select("rect").transition().duration(dur).attr("width", d => Math.max(1, x(d[metric]) - RW.m.l))
     .attr("fill", d => hlColor(d.stadt) || (d.land !== "DE" ? "color-mix(in srgb, #f4f7ff 30%, transparent)" : "color-mix(in srgb, var(--muted) 45%, transparent)"))
     .attr("stroke", d => d.land !== "DE" ? "#c8102e" : d.status === "Wunschstadt" ? "#f4f7ff" : "none").attr("stroke-width", 1)
@@ -738,16 +773,22 @@ function drawRank() {
     .attr("fill-opacity", d => d.status === "Grenzfall" ? 0.45 : 1);
   rows.select("text.val").transition().duration(dur).attr("x", d => x(d[metric]) + 6).text(d => de(sort.f(d[metric])) + (sort.u || ""));
   /* Linie: flachste Großstadt = Grundrauschen des DSM */
-  const flat = R.find(d => d.stadt === DATA.featured[flatIdx]);
+  const flat = BY.get(FLAT);
   const nx = x(flat[metric]);
   rnoise.selectAll("*").remove();
-  rnoise.append("line").attr("x1", nx).attr("x2", nx).attr("y1", 0).attr("y2", R.length * RW.row + RW.m.t).attr("stroke", SCOL[1]).attr("stroke-dasharray", "2 4").attr("opacity", 0.6);
+  rnoise.append("line").attr("x1", nx).attr("x2", nx).attr("y1", 0).attr("y2", RV.length * RW.row + RW.m.t).attr("stroke", SCOL[1]).attr("stroke-dasharray", "2 4").attr("opacity", 0.6);
   document.getElementById("ranknote").innerHTML =
-    `Gestrichelte Linie: Wert der flachsten Großstadt (${flat.stadt}). Bis hierhin besteht ein großer Teil des Signals aus DEM-Rauschen (Gebäude, Bäume im Oberflächenmodell), nicht aus Topografie. ° = Grenzfall knapp unter 100.000 EW laut OSM. AT/CH/LU = Vergleichsstädte aus Österreich, der Schweiz und Luxemburg; * = Wunschstadt unter 100.000 EW (Tübingen, Pirmasens). Beide ohne deutschen Rang; Rangzahl links = Gesamtrang.`;
+    `Gestrichelte Linie: Wert der flachsten Großstadt (${flat.stadt}). Bis hierhin besteht ein großer Teil des Signals aus DEM-Rauschen (Gebäude, Bäume im Oberflächenmodell), nicht aus Topografie. ° = Grenzfall knapp unter 100.000 EW laut OSM. AT/CH/LU = Vergleichsstädte aus Österreich, der Schweiz und Luxemburg; WISH = Reddit-Wishlist (Orte unter 100.000 EW, mit * markiert). Beide Gruppen ohne deutschen Rang. Zeile anklicken = Stadt ins Relief laden; Rangzahl links = Position in der aktuellen Liste.`;
+}
+
+function markRank() {
+  rrows.selectAll("g.row").select(".lbl")
+    .classed("sel", d => d.slug === state.cur || d.slug === partner())
+    .style("fill", d => d.slug === state.cur ? C("--amber") : d.slug === partner() ? C("--cyan") : hlColor(d.stadt));
 }
 
 /* ---------- Methodik / Validierung ---------- */
-const MLAB = { strassendaten: "Straßendaten", stadtgrenzen: "Stadtgrenzen", staedteliste: "Städteliste", hoehenmodell: "Höhenmodell", netz: "Netz", bruecken_tunnel: "Brücken & Tunnel", kurze_kanten: "Kurze Kanten", steigung: "Steigung", ausreisser: "Ausreißer", hm_pro_km: "Höhenmeter/km", oesterreich: "Österreich", schweiz: "Schweiz", luxemburg: "Luxemburg", wunschstaedte: "Wunschstädte", steilste_strecke: "Steilste Strecke" };
+const MLAB = { strassendaten: "Straßendaten", stadtgrenzen: "Stadtgrenzen", staedteliste: "Städteliste", hoehenmodell: "Höhenmodell", netz: "Netz", bruecken_tunnel: "Brücken & Tunnel", kurze_kanten: "Kurze Kanten", steigung: "Steigung", ausreisser: "Ausreißer", hm_pro_km: "Höhenmeter/km", oesterreich: "Österreich", schweiz: "Schweiz", luxemburg: "Luxemburg", wunschstaedte: "Reddit-Wishlist", steilste_strecke: "Steilste Strecke" };
 document.getElementById("method").innerHTML = Object.entries(DATA.meta.methodik).map(([k, v]) => `<div><dt>${MLAB[k] || k}</dt><dd>${v}</dd></div>`).join("");
 document.getElementById("limits").innerHTML = DATA.meta.bekannte_grenzen.map(s => `<li>${s}</li>`).join("") +
   `<li>Ranking-Vergleich: Spearman ρ (Hm/km vs. Anteil > 6 %) = ${de(fmt2(DATA.meta.ranking_vergleich.spearman_hm_vs_anteil6))}; Copernicus vs. SRTM (Hm/km) = ${de(fmt2(DATA.meta.dem_vergleich.spearman_hm_pro_km_cop30_vs_srtm))}.</li>`;
@@ -763,39 +804,131 @@ document.getElementById("foot").innerHTML = `Daten: © OpenStreetMap-Mitwirkende
 function syncSpin() { document.getElementById("spin").setAttribute("aria-pressed", state.spin); }
 document.getElementById("spin").onclick = () => { state.spin = !state.spin; syncSpin(); };
 document.getElementById("exag").oninput = e => { state.exag = +e.target.value; document.getElementById("exagout").textContent = state.exag + "×"; };
-document.getElementById("cmp").onclick = e => {
-  state.compare = !state.compare;
-  if (state.compare) { state.spin = false; syncSpin(); }
-  e.currentTarget.setAttribute("aria-pressed", state.compare);
-  refresh();
+document.getElementById("cmp").onclick = () => {
+  want.compare = !state.compare;
+  if (want.compare) { want.other = state.other || defaultPartner(state.cur); state.spin = false; syncSpin(); }
+  go();
+};
+document.getElementById("partner").onchange = e => {
+  want.other = e.target.value; want.compare = true; state.spin = false; syncSpin(); go();
 };
 
-function refresh(fly = true) {
-  const c = cities[state.cur], o = cities[otherIdx()];
-  tabs.attr("aria-selected", (d, i) => i === state.cur);
-  document.getElementById("cmp").textContent = `Vergleich mit ${cities[otherIdx()].name}`;
-  lbl[0].innerHTML = `${c.name}<small>${de(fmt1(c.m.hm_pro_km))} Hm/km</small>`;
-  lbl[1].innerHTML = `${o.name}<small>${de(fmt1(o.m.hm_pro_km))} Hm/km</small>`;
-  document.getElementById("viewtitle").textContent = state.compare ? `${c.name} ⇄ ${o.name}` : `Relief · ${c.name}`;
-  document.getElementById("hudtl").innerHTML = `<b>${c.name}</b><br>${fmt0(c.m.strassen_km)} km Straßennetz<br>${fmt0(c.m.einwohner_osm)} EW (OSM)` +
-    (state.compare ? `<br><span style="color:var(--cyan)">rechts: ${o.name}, gleiche Skala und Überhöhung</span>` : "");
-  document.getElementById("hudbl").textContent = `Höhe relativ zum Stadttiefpunkt · ${c.edges.g.length.toLocaleString("de-DE")} Kanten`;
-  applyVisibility(); updateKpis(); updateHist();
-  /* Vergleich immer von Süden, damit beide Städte nebeneinander stehen */
-  if (fly && webgl) flyTo(new THREE.Vector3(0, 0, 0), frameDistance(), 1200, state.compare ? new THREE.Vector3(0, 0.5, 1) : null);
+function steepLine(c, color) {
+  const s = c.spot;
+  return s ? `<br><span style="color:${color}">▲ Steilste Straße${color === "var(--cyan)" ? " " + c.name : ""}: ${s.name} · ${de(fmt1(s.grade_cons))} % auf ${fmt0(s.len)} m</span>` : "";
 }
-function select(i) { if (i === state.cur) return; state.cur = i; refresh(); drawProfile(); }
+function fillPartner() {
+  const sel = d3.select("#partner");
+  const groups_ = d3.group(R.filter(d => d.slug !== state.cur && available(d.slug)), groupOf);
+  sel.selectAll("optgroup").data(["DE", "AT", "CH", "LU", "WISH"].filter(g => groups_.has(g))).join("optgroup")
+    .attr("label", g => GROUP_LAB[g])
+    .selectAll("option").data(g => groups_.get(g).slice().sort((a, b) => d3.ascending(a.stadt, b.stadt))).join("option")
+    .attr("value", d => d.slug).text(d => d.stadt);
+  sel.property("value", state.other);
+}
+
+function refresh(fly = true) {
+  const c = city(state.cur), o = partner() ? city(partner()) : null;
+  tabs.attr("aria-selected", d => d.slug === state.cur);
+  fillPartner();
+  document.getElementById("cmp").setAttribute("aria-pressed", state.compare);
+  lbl[0].innerHTML = `${c.name}<small>${de(fmt1(c.m.hm_pro_km))} Hm/km</small>`;
+  if (o) lbl[1].innerHTML = `${o.name}<small>${de(fmt1(o.m.hm_pro_km))} Hm/km</small>`;
+  document.getElementById("viewtitle").textContent = o ? `${c.name} ⇄ ${o.name}` : `Relief · ${c.name}`;
+  document.getElementById("hudtl").innerHTML = `<b>${c.name}</b><br>${de(fmt0(c.m.strassen_km))} km Straßennetz` +
+    (c.m.einwohner_osm ? `<br>${de(fmt0(c.m.einwohner_osm))} EW (OSM)` : "") + steepLine(c, "var(--amber)") + (o ? steepLine(o, "var(--cyan)") : "");
+  document.getElementById("hudbl").textContent = `Höhe relativ zum Stadttiefpunkt · ${c.edges.g.length.toLocaleString("de-DE")} Kanten`;
+  applyVisibility(); updateKpis(); updateHist(); markRank();
+  /* Vergleich immer von Süden, damit beide Städte nebeneinander stehen */
+  if (fly && webgl) flyTo(new THREE.Vector3(0, 0, 0), frameDistance(), 1200, o ? new THREE.Vector3(0, 0.5, 1) : null);
+}
+
+/* ---------- Laden (nur was gebraucht wird) ---------- */
+const loadEl = document.getElementById("loading");
+function ensure(slug) {
+  if (loaded.has(slug)) return Promise.resolve(loaded.get(slug));
+  if (!pend.has(slug)) {
+    pend.set(slug, (async () => {
+      let c = INLINE[slug];
+      if (!c) {
+        const r = await fetch(`staedte/${slug}.json`);
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        c = await r.json();
+      }
+      loaded.set(slug, c);
+      if (webgl) { const g = buildCity(c, slug); groups.set(slug, g); scene.add(g); }
+      return c;
+    })().finally(() => pend.delete(slug)));
+  }
+  return pend.get(slug);
+}
+/* Speicher sparen: nur wenige Städte gleichzeitig im Arbeitsspeicher/auf der Grafikkarte */
+function evict() {
+  for (const s of [...loaded.keys()]) {
+    if (loaded.size <= 5) break;
+    if (s === state.cur || s === state.other || s === START) continue;
+    const g = groups.get(s);
+    if (g) { g.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); }); scene.remove(g); groups.delete(s); }
+    loaded.delete(s);
+  }
+}
+let token = 0;
+async function go() {
+  const my = ++token, w = { ...want };
+  if (!w.other || w.other === w.cur) w.other = defaultPartner(w.cur);
+  view.classList.add("busy"); loadEl.classList.remove("err");
+  loadEl.textContent = `Lade ${BY.get(w.cur).stadt}${w.compare ? " und " + BY.get(w.other).stadt : ""} …`;
+  try {
+    await Promise.all([ensure(w.cur)].concat(w.compare ? [ensure(w.other)] : []));
+  } catch (e) {
+    if (my !== token) return;
+    loadEl.classList.add("err");
+    loadEl.textContent = location.protocol === "file:"
+      ? "Stadtdateien lassen sich nicht per file:// laden. Bitte die Seite über einen Webserver öffnen (lokal z. B. „python -m http.server“ im Ordner dist) oder hochladen."
+      : `Stadt konnte nicht geladen werden (${e.message}).`;
+    return;
+  }
+  if (my !== token) return;
+  view.classList.remove("busy");
+  const first = !state.ready;
+  Object.assign(state, w); state.ready = true;
+  if (first && webgl) { const dist = frameDistance(); camera.position.set(0, dist * 0.42, dist * 0.91); controls.target.set(0, 0, 0); }
+  refresh(!first); drawProfile(); evict(); writeHash();
+}
+function setCity(slug) {
+  if (!available(slug)) return;
+  want.cur = slug;
+  if (!want.other || want.other === slug) want.other = defaultPartner(slug);
+  state.spin = false; syncSpin();
+  go();
+}
+function writeHash() {
+  try { history.replaceState(null, "", "#" + state.cur + (state.compare ? "-vs-" + state.other : "")); } catch (e) { /* Sandbox */ }
+}
+function readHash() {
+  const [a, b] = decodeURIComponent(location.hash.slice(1)).split("-vs-");
+  return { a: BY.has(a) && available(a) ? a : null, b: BY.has(b) && available(b) ? b : null };
+}
 document.getElementById("tabs").addEventListener("keydown", e => {
   if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-  const n = (state.cur + (e.key === "ArrowRight" ? 1 : -1) + cities.length) % cities.length;
-  select(n); document.getElementById("tab" + n).focus();
+  const i = FEAT.findIndex(d => d.slug === state.cur);
+  const n = (Math.max(0, i) + (e.key === "ArrowRight" ? 1 : -1) + FEAT.length) % FEAT.length;
+  setCity(FEAT[n].slug); document.getElementById("tab_" + FEAT[n].slug).focus();
+});
+window.addEventListener("hashchange", () => {
+  const h = readHash();
+  if (!h.a || (h.a === state.cur && (h.b || null) === partner())) return;
+  want.cur = h.a; want.compare = !!h.b; want.other = h.b || defaultPartner(h.a); go();
 });
 
 init3d();
-if (webgl) { const dist = frameDistance(); camera.position.set(0, dist * 0.42, dist * 0.91); controls.target.set(0, 0, 0); }
-refresh(false);
-drawProfile();
+{
+  const h = readHash();
+  if (h.a) want.cur = h.a;
+  if (h.b) { want.other = h.b; want.compare = true; }
+}
 drawRank();
+go();
 let rw = window.innerWidth;
-window.addEventListener("resize", () => { if (Math.abs(window.innerWidth - rw) < 40) return; rw = window.innerWidth; drawRank(); drawProfile(); });
+window.addEventListener("resize", () => { if (Math.abs(window.innerWidth - rw) < 40) return; rw = window.innerWidth; drawRank(); if (state.ready) drawProfile(); });
 </script>
