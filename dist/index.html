@@ -4781,7 +4781,7 @@ function buildCity(c, slug) {
   tg.setAttribute("position", new THREE.BufferAttribute(tp, 3));
   tg.setAttribute("color", new THREE.BufferAttribute(tc, 3));
   tg.setIndex(idxs); tg.computeVertexNormals();
-  const tmat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x14263c, transparent: true, opacity: 1, side: THREE.DoubleSide });
+  const tmat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x16301f, transparent: true, opacity: 1, side: THREE.DoubleSide });
   const terrain = new THREE.Mesh(tg, tmat);
   g.add(terrain);
   const wire = new THREE.LineSegments(new THREE.WireframeGeometry(tg), new THREE.LineBasicMaterial({ color: 0x1a3a5a, transparent: true, opacity: 0.18 }));
@@ -4891,14 +4891,14 @@ function init3d() {
   scene.fog = new THREE.FogExp2(0x0b1522, 0.000010);
   camera = new THREE.PerspectiveCamera(42, 1, 10, 200000);
   camera.position.set(0, 9000, 13000);
-  scene.add(new THREE.AmbientLight(0x8aa8cc, 2.0));
+  scene.add(new THREE.AmbientLight(0x8aa8cc, 1.7));
   const sun = new THREE.DirectionalLight(0xbfe6ff, 2.2); sun.position.set(-1, 1.2, 0.6); scene.add(sun);
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = !reduced; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.49;
   controls.autoRotateSpeed = 0.6;
   composer = new THREE.EffectComposer(renderer);
   composer.addPass(new THREE.RenderPass(scene, camera));
-  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(512, 512), 0.75, 0.55, 0.12);
+  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(512, 512), 0.4, 0.4, 0.35);
   composer.addPass(bloom);
   composer.addPass(new THREE.OutputPass());
   raycaster = new THREE.Raycaster();
