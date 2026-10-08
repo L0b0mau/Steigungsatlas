@@ -252,9 +252,11 @@ def build_html(only=None, workers=3, skip_export=False):
     data = _clean(data)
     html = _assemble({**data, "inline": {slug(START_CITY): load(START_CITY)}})
     (DIST / "index.html").write_text(_document(html))
-    # Einzeldatei-Variante (z. B. für Artifact/E-Mail): hervorgehobene Städte eingebettet, kein Nachladen
-    frag = _assemble({**data, "offline": True, "inline": {slug(c): load(c) for c in sel}})
-    (config.CACHE / "index_fragment.html").write_text(frag)
+    # Gleiche Seite ohne Dokumentgerüst (für die Veröffentlichung als Artifact, Stadtdateien als Begleitdateien)
+    (config.CACHE / "index_fragment.html").write_text(html)
+    # Einzeldatei-Variante (z. B. für E-Mail): nur die hervorgehobenen Städte eingebettet, kein Nachladen
+    offline = _assemble({**data, "offline": True, "inline": {slug(c): load(c) for c in sel}})
+    (config.CACHE / "index_offline.html").write_text(offline)
     n = len(list((DIST / "staedte").glob("*.json")))
     size = sum(f.stat().st_size for f in (DIST / "staedte").glob("*.json")) / 1e6
     log.info("dist/index.html %.1f MB, %d Stadtdateien (%.0f MB, unkomprimiert)",
