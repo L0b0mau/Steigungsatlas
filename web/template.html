@@ -334,7 +334,7 @@ function buildCity(c, slug) {
   tg.setAttribute("position", new THREE.BufferAttribute(tp, 3));
   tg.setAttribute("color", new THREE.BufferAttribute(tc, 3));
   tg.setIndex(idxs); tg.computeVertexNormals();
-  const tmat = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 1, side: THREE.DoubleSide });
+  const tmat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x14263c, transparent: true, opacity: 1, side: THREE.DoubleSide });
   const terrain = new THREE.Mesh(tg, tmat);
   g.add(terrain);
   const wire = new THREE.LineSegments(new THREE.WireframeGeometry(tg), new THREE.LineBasicMaterial({ color: 0x1a3a5a, transparent: true, opacity: 0.18 }));
@@ -348,7 +348,7 @@ function buildCity(c, slug) {
   const col = new THREE.Color();
   for (let e = 0; e < n; e++) {
     col.set(gradeColor(E.g[e] / 1000));
-    const dim = E.g[e] < 20 ? 0.55 : 1.0;
+    const dim = E.g[e] < 20 ? 0.8 : 1.0;
     for (let v = E.off[e]; v < E.off[e + 1] - 1; v++) {
       for (let t = 0; t < 2; t++) {
         const src = 3 * (v + t), dst = 6 * s + 3 * t;
@@ -441,10 +441,10 @@ function init3d() {
   renderer.setClearColor(0x000000, 0);
   view.prepend(renderer.domElement);
   scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x060a11, 0.000028);
+  scene.fog = new THREE.FogExp2(0x0b1522, 0.000010);
   camera = new THREE.PerspectiveCamera(42, 1, 10, 200000);
   camera.position.set(0, 9000, 13000);
-  scene.add(new THREE.AmbientLight(0x6f8fb5, 1.4));
+  scene.add(new THREE.AmbientLight(0x8aa8cc, 2.0));
   const sun = new THREE.DirectionalLight(0xbfe6ff, 2.2); sun.position.set(-1, 1.2, 0.6); scene.add(sun);
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = !reduced; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.49;
