@@ -123,6 +123,10 @@ select.switch{max-width:15em;text-transform:none;letter-spacing:0}
 .kpi .lab{font-family:var(--font-mono);font-size:var(--step--1);color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
 .kpi .val{font-family:var(--font-mono);font-weight:600;font-size:clamp(1.6rem,1.2rem + 1.4vw,2.4rem);line-height:1.1;color:var(--fg);font-variant-numeric:tabular-nums}
 .kpi .val small{font-size:.45em;color:var(--muted);font-weight:400;margin-left:.2em}
+.kpi{position:relative}
+.kpi[data-tip]{cursor:help}
+.kpi[data-tip]::after{content:attr(data-tip);position:absolute;left:8px;right:8px;top:calc(100% - 6px);z-index:20;padding:8px 10px;background:#0a1220;border:1px solid var(--cyan);color:var(--fg);font:var(--step--1)/1.4 var(--font-body,inherit);letter-spacing:normal;text-transform:none;opacity:0;visibility:hidden;transition:opacity .15s;pointer-events:none}
+.kpi[data-tip]:hover::after,.kpi[data-tip]:focus::after{opacity:1;visibility:visible}
 .kpi .sub{font-family:var(--font-mono);font-size:var(--step--1);color:var(--muted)}
 .kpi .sub .vs{color:var(--cyan)}
 .kpi:nth-child(1) .val{color:var(--amber);text-shadow:0 0 .7rem color-mix(in srgb,var(--amber) 40%,transparent)}
@@ -5034,12 +5038,12 @@ function bindPointer() {
 
 /* ---------- Kennzahlen ---------- */
 const KPI = [
-  { k: "hm_pro_km", lab: "Höhenmeter / km", unit: "Hm/km", f: fmt1, srtm: "drive_srtm_hm_pro_km" },
-  { k: "anteil_ueber_6pct", lab: "Anteil > 6 %", unit: "%", f: fmt1, srtm: "drive_srtm_anteil_ueber_6pct" },
-  { k: "anteil_ueber_10pct", lab: "Anteil > 10 %", unit: "%", f: fmt1 },
-  { k: "p90_steigung_pct", lab: "P90 Steigung", unit: "%", f: fmt1 },
+  { k: "hm_pro_km", lab: "Höhenmeter / km", tip: "Summe aller Höhenmeter, die man auf dem Straßennetz bergauf und bergab überwindet, geteilt durch die Netzlänge in km. Höher = hügeliger.", unit: "Hm/km", f: fmt1, srtm: "drive_srtm_hm_pro_km" },
+  { k: "anteil_ueber_6pct", lab: "Anteil > 6 %", tip: "Anteil der Straßenkilometer, die steiler als 6 % sind (6 m Höhe auf 100 m Strecke).", unit: "%", f: fmt1, srtm: "drive_srtm_anteil_ueber_6pct" },
+  { k: "anteil_ueber_10pct", lab: "Anteil > 10 %", tip: "Anteil der Straßenkilometer, die steiler als 10 % sind. Das ist schon deutlich spürbar steil.", unit: "%", f: fmt1 },
+  { k: "p90_steigung_pct", lab: "P90 Steigung", tip: "90. Perzentil: 90 % der Straßenkilometer sind flacher als dieser Wert, 10 % sind steiler.", unit: "%", f: fmt1 },
 ];
-const kp = d3.select("#kpis").selectAll(".kpi").data(KPI).join("div").attr("class", "kpi")
+const kp = d3.select("#kpis").selectAll(".kpi").data(KPI).join("div").attr("class", "kpi").attr("tabindex", 0).attr("data-tip", d => d.tip)
   .html(d => `<span class="lab">${d.lab}</span><span class="val"><span class="n">0</span><small>${d.unit}</small></span><span class="sub"></span>`);
 const shown = {};
 function updateKpis() {
@@ -5164,10 +5168,10 @@ document.getElementById("spotfocus").onclick = () => {
 /* ---------- Ranking ---------- */
 const featured = new Map(DATA.featured.map((n, i) => [n, i]));
 const SORTS = [
-  { k: "hm_pro_km", lab: "Hm/km", f: fmt1 },
-  { k: "anteil_ueber_6pct", lab: "> 6 %", f: fmt1, u: " %" },
-  { k: "p90_steigung_pct", lab: "P90", f: fmt1, u: " %" },
-  { k: "drive_srtm_hm_pro_km", lab: "Hm/km SRTM", f: fmt1 },
+  { k: "hm_pro_km", lab: "Hm/km", f: fmt1, tip: "Höhenmeter pro Straßenkilometer" },
+  { k: "anteil_ueber_6pct", lab: "> 6 %", f: fmt1, u: " %", tip: "Anteil der Straßenkilometer steiler als 6 %" },
+  { k: "p90_steigung_pct", lab: "P90", f: fmt1, u: " %", tip: "90. Perzentil der Steigung: 90 % der Straßenkilometer sind flacher" },
+  { k: "drive_srtm_hm_pro_km", lab: "Hm/km SRTM", f: fmt1, tip: "Höhenmeter pro km mit dem älteren SRTM-Höhenmodell (zum Gegencheck)" },
   { k: "stadt", lab: "Name" },
 ];
 let rankKey = "hm_pro_km";
@@ -5175,7 +5179,7 @@ const RW = { w: 760, row: 17, m: { l: 150, r: 64, t: 6 } };
 const rsvg = d3.select("#rank").append("svg").attr("role", "img").attr("aria-label", "Ranking aller Großstädte");
 const rnoise = rsvg.append("g");
 const rrows = rsvg.append("g");
-d3.select("#rankctl").selectAll("button").data(SORTS).join("button").attr("class", "switch").attr("type", "button")
+d3.select("#rankctl").selectAll("button").data(SORTS).join("button").attr("class", "switch").attr("type", "button").attr("title", d => d.tip || null)
   .attr("aria-pressed", d => d.k === rankKey).text(d => d.lab).on("click", (e, d) => { rankKey = d.k; drawRank(); });
 const hlColor = n => { const i = featured.get(n); return i === undefined ? null : DATA.roles[i] === "ref" ? SCOL[1] : DATA.roles[i] === "top" ? [C("--amber"), SCOL[2], SCOL[3]][i] : AT_COL; };
 let groupKey = "all";
