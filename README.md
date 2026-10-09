@@ -37,7 +37,6 @@ Gesamtgröße aller Stadtdateien: 69 MB, mit gzip ca. 22 MB.
 | `results/top_staedte.json` | Top 3, flachste Stadt, beide Rankings, Methodik, bekannte Grenzen |
 | `results/validierung.json` | Stichprobe bekannter Straßen mit Höhenprofil |
 | `dist/` | interaktive Visualisierung: `index.html` (2,1 MB) + `staedte/<stadt>.json` |
-| `social/wuppertal_vs_innsbruck.png` | Vergleichsbild für Social Media (3200×2000, englisch) |
 
 ### Top 10 nach Höhenmetern pro Straßenkilometer (Netz „drive“, Copernicus GLO-30)
 
@@ -199,7 +198,7 @@ Gesamtrang ja, Rang im deutschen Großstadt-Ranking nein. Luxemburg wird wie AT/
 - **Copernicus GLO-30 ist ein Oberflächenmodell (DSM)**, kein Geländemodell. Gebäude, Bäume und Brückendecks fließen ein. Das
   erzeugt in flachen Städten ein Grundrauschen von ca. 5 Hm/km (≈ 1 % mittlere Steigung). Ein echtes Geländemodell (DGM1 der
   Länder) wäre genauer und ist in vielen Ländern frei verfügbar, die Portale waren in der Ausführungsumgebung aber
-  nicht erreichbar. Die Umstellung ist geplant: [docs/PLAN_DTM_UND_STADTDATEIEN.md](docs/PLAN_DTM_UND_STADTDATEIEN.md).
+  nicht erreichbar.
 - **30-m-Raster**: Rampen ab ca. 100 m werden gut getroffen. Kürzere Abschnitte schwanken um mehrere Prozentpunkte, Rampen unter 30 m sind unsichtbar.
 - **Nur Knotenhöhen**: Kuppen und Senken zwischen zwei Kreuzungen fehlen; lange Kanten werden unterschätzt.
 - **Unter Brücken**: Straßen, die unter einer Brücke durchführen, können im DSM die Deckhöhe bekommen (nicht korrigiert).
@@ -225,13 +224,4 @@ steigung/report.py       CSV/JSON inkl. Methodik und Grenzen
 steigung/validate.py     Stichprobe bekannter Straßen
 steigung/viz_export.py   schreibt dist/: index.html + je Stadt eine JSON-Datei (dist/staedte/)
 web/template.html        Seite (HTML/CSS/JS), web/vendor/ eingebettete Bibliotheken und Schriften
-social/poster.js         rendert das Social-Media-Bild aus der Seite (Node + Playwright)
-docs/PLAN_DTM_UND_STADTDATEIEN.md  Plan für v2: Geländemodell (DGM) statt DSM, eine JSON-Datei pro Stadt
-```
-
-Das Social-Media-Bild neu erzeugen (benötigt Node und `npm i playwright`):
-
-```bash
-(cd dist && python -m http.server 8765 &)
-node social/poster.js http://localhost:8765/index.html social/wuppertal_vs_innsbruck.png
 ```

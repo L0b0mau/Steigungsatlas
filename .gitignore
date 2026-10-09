@@ -6,3 +6,5 @@ logs/
 logs_*.txt
 run.pid
 node_modules/
+docs/
+social/
